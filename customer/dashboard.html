@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+    }
+    header {
+      background: #007bff;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      font-size: 1.5rem;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 15px;
+    }
+    .container {
+      padding: 2rem;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Customer Dashboard</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="#">My Tutors</a>
+      <a href="#">Settings</a>
+      <a href="/customer/login.html">Logout</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Welcome Back, [Customer Name]!</h2>
+      <p>Find and book tutors for your next session below.</p>
+      <button>Find Tutors</button>
+    </div>
+
+    <div class="card">
+      <h3>Upcoming Sessions</h3>
+      <ul>
+        <li>Math session with John Doe — Tomorrow at 5:00 PM</li>
+        <li>Science session with Jane Smith — Thursday at 3:00 PM</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

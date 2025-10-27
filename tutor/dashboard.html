@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutor Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+    }
+    header {
+      background: #ff8800;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      font-size: 1.5rem;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 15px;
+    }
+    .container {
+      padding: 2rem;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    button {
+      background: #ff8800;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e67300;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tutor Dashboard</h1>
+    <nav>
+      <a href="#">Home</a>
+      <a href="#">My Students</a>
+      <a href="#">Earnings</a>
+      <a href="tutor_login.html">Logout</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Welcome Back, [Tutor Name]!</h2>
+      <p>Here’s a summary of your upcoming tutoring sessions.</p>
+    </div>
+
+    <div class="card">
+      <h3>Upcoming Lessons</h3>
+      <ul>
+        <li>Math with Sarah Johnson — Tomorrow at 4:00 PM</li>
+        <li>English with Daniel Lee — Friday at 2:00 PM</li>
+      </ul>
+      <button>View Schedule</button>
+    </div>
+
+    <div class="card">
+      <h3>Earnings Summary</h3>
+      <p>This Month: <strong>$720</strong></p>
+      <button>View Details</button>
+    </div>
+  </div>
+</body>
+</html>
