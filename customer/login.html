@@ -5,14 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Parent Login</title>
   <style>
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
       font-family: Arial, sans-serif;
       background: #f4f6f8;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 30px;
       align-items: center;
       height: 100vh;
     }
+
+    header {
+      background: #007bff;
+      color: white;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      width: 100%;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+    }
+
+     header a {
+      color: white;
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: 500;
+    }
+
+    header a:hover {
+      text-decoration: underline;
+    }
+
     .form-container {
       background: #fff;
       padding: 2rem;
@@ -51,9 +89,27 @@
       color: #007bff;
       text-decoration: none;
     }
+
+    footer {
+      text-align: center;
+      background: #333;
+      color: white;
+      padding: 1rem;
+      font-size: 0.9rem;
+      margin-top: 2rem;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
+  <header>
+      <a href="/index.html"><h1>TUTORIAL HUB</h1></a>
+    <nav>
+      <a href="/#about">About</a>
+      <a href="/#contact">Contact</a>
+    </nav>
+  </header>
+
   <div class="form-container">
     <h2>Parent Login</h2>
     <form>
@@ -65,5 +121,9 @@
       </div>
     </form>
   </div>
+
+   <footer id="contact">
+    <p>&copy; 2025 Tutorial Hub. All rights reserved.</p>
+  </footer>
 </body>
 </html>
