@@ -1,0 +1,21 @@
+header {
+    padding: .75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+header a.logo {
+    font-weight: 900;
+    font-size: 32px;
+}
+
+header nav {
+    display: flex; 
+    gap: 1rem;
+    align-items: center;
+}

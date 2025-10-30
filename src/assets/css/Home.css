@@ -1,0 +1,105 @@
+.hero {
+  text-align: center;
+  padding: 4rem 1rem;
+  background: linear-gradient(to right, #007bff, #00a8ff);
+  color: white;
+}
+
+.hero h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.hero button {
+  background: white;
+  color: #007bff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.hero button:hover {
+  background: #e3e3e3;
+}
+
+.sections {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 2rem;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 300px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card h3 {
+  color: #007bff;
+  margin-bottom: 0.5rem;
+}
+
+.card p {
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.card a {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  transition: 0.3s;
+  margin: 0 .5rem;
+}
+
+.card a:hover {
+  background: #0056b3;
+}
+
+@media (max-width: 768px) {
+  .hero h2 {
+    font-size: 2rem;
+  }
+
+  .sections {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.hero a {
+  color: rgb(46, 46, 46);
+  text-decoration: none;
+  font-weight: 900;
+  font-size: xx-large;
+}
+
+#tutor-register {
+  background-color: orange;
+}
+
+#parent-register {
+  background-color: green;
+}
