@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
     const [pageVars, setPageVars] = useState({
@@ -8,9 +8,11 @@ const Login = () => {
         hidePass: true
     });
 
+    const navigate = useNavigate()
+
     function handleSubmit(e) {
         e.preventDefault();
-        alert(JSON.stringify(pageVars));
+        navigate("/tutor/dashboard")
     }
 
     function handleVarChange(key, e) {

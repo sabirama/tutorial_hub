@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom";
+import { Link, useNavigate} from "react-router-dom";
 
 const Register = () => {
     const [pageVars, setPageVars] = useState({
@@ -10,10 +10,11 @@ const Register = () => {
         hidePass: true,
         hideCPass: true
     });
+ const navigate = useNavigate()
 
-    function handleSubmit(e) {
+    function handleSubmit(e) {1
         e.preventDefault();
-        alert(JSON.stringify(form));
+        navigate("/parent/dashboard")
     }
 
     function handleVarChange(key, e) {

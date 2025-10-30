@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Register = () => {
     const [pageVars, setPageVars] = useState({
@@ -39,9 +39,11 @@ const Register = () => {
         "Physical Education"
     ];
 
+    const navigate = useNavigate()
+
     function handleSubmit(e) {
         e.preventDefault();
-        alert(JSON.stringify(form));
+        navigate("/tutor/dashboard")
     }
 
     function handleVarChange(key, e) {
