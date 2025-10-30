@@ -1,0 +1,11 @@
+.dashboard-content {
+    margin-left: 250px;
+    padding: 20px;
+}
+
+@media screen and (max-width: 768px) {
+    .dashboard-content {
+        margin-left: 0;
+    }
+    
+}
