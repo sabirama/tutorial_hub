@@ -44,13 +44,13 @@ const Dashboard = () => {
                 <button className="mov" onClick={toggleDashboard}>☰</button>
                 <ul>
                     <li className="dashboard">
-                        <Link to={"/admin/dashboard"}>Dashboard</Link>
+                        <Link to={"/admin"}>Dashboard</Link>
                     </li>
                     <li>
-                        <Link to={"/admin/dashboard/parents"}>Parents</Link>
+                        <Link to={"/admin/parents"}>Parents</Link>
                     </li>
                     <li>
-                        <Link to={"/admin/dashboard/tutors"}>Tutors</Link>
+                        <Link to={"/admin/tutors"}>Tutors</Link>
                     </li>
                     <li>
                         <Link to={"/admin/Logout"} onClick={logout}>Logout</Link>

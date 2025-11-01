@@ -41,16 +41,16 @@ const Dashboard = () => {
                 <button className="mov" onClick={toggleDashboard}>☰</button>
                 <ul>
                     <li className="dashboard">
-                        <Link to={"/parent/dashboard"}>Dashboard</Link>
+                        <Link to={"/parent"}>Dashboard</Link>
                     </li>
                     <li>
-                        <Link to={"/parent/dashboard/sessions"}>Sessions</Link>
+                        <Link to={"/parent/sessions"}>Sessions</Link>
                     </li>
                     <li>
-                        <Link to={"/parent/dashboard/mytutors"}>My Tutors</Link>
+                        <Link to={"/parent/mytutors"}>My Tutors</Link>
                     </li>
                     <li>
-                        <Link to={"/parent/dashboard/explore_tutors"}>All Tutors</Link>
+                        <Link to={"/parent/explore_tutors"}>All Tutors</Link>
                     </li>
                     <li>
                         <Link to={"/parent/Logout"}>Logout</Link>

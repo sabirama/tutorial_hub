@@ -19,3 +19,9 @@ header nav {
     gap: 1rem;
     align-items: center;
 }
+
+@media screen and (max-width: 420px) {
+    header a.logo {
+        font-size: 18px;
+    }
+}

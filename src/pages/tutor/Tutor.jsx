@@ -6,7 +6,7 @@ import Register from "./modules/Register"
 const pageRoutes = [
     {
         name: "dashboard",
-        path: "/dashboard/*",
+        path: "/*",
         element: Dashboard
     },
     {

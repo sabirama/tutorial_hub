@@ -5,8 +5,8 @@ import "../../assets/css/Aside.css";
 
 const PageRoutes = [
     {
-        name: "dashboard",
-        path: "/dashboard/*",
+        name: "main",
+        path: "/*",
         element: Dashboard
     },
     {

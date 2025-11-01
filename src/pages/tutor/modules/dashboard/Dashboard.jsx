@@ -7,11 +7,6 @@ import SessionRequest from "./modules/SessionRequest";
 
 const DashboardRoutes = [
     {
-        name: "dashboard",
-        path: "/",
-        element: TutorProfile
-    },
-    {
         name: "sessions",
         path: "/sessions",
         element: Sessions
@@ -45,13 +40,13 @@ const Dashboard = () => {
                         <Link to={"/tutor/dashboard"}>Dashboard</Link>
                     </li>
                     <li>
-                        <Link to={"/tutor/dashboard/sessions"}>Sessions</Link>
+                        <Link to={"/tutor/sessions"}>Sessions</Link>
                     </li>
                     <li>
-                        <Link to={"/tutor/dashboard/tutee"}>Tutored</Link>
+                        <Link to={"/tutor/tutee"}>Tutored</Link>
                     </li>
                      <li>
-                        <Link to={"/tutor/dashboard/session-request"}>Session Request</Link>
+                        <Link to={"/tutor/session-request"}>Session Request</Link>
                     </li>
                     <li>
                         <Link to={"/tutor/Logout"}>Logout</Link>

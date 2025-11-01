@@ -7,7 +7,6 @@ const AdminDashboard = () => {
     totalTutors: 89,
     totalSessions: 543,
     activeSessions: 23,
-    revenue: 12540,
     newRegistrations: 12
   });
 
@@ -76,13 +75,6 @@ const AdminDashboard = () => {
       change: '+5', 
       icon: '🟢',
       color: '#ef4444'
-    },
-    { 
-      title: 'Revenue', 
-      value: `$${stats.revenue.toLocaleString()}`, 
-      change: '+18%', 
-      icon: '💰',
-      color: '#8b5cf6'
     },
     { 
       title: 'New Registrations', 
