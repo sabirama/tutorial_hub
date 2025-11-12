@@ -13,9 +13,11 @@ const apiCall = async (config) => {
 
     try {
         const axiosConfig = {
-            headers: { ...headers,
-                "App-Key": import.meta.env.VITE_API || 'fallback-key' },
-            ...options 
+            headers: {
+                ...headers,
+                "App-Key": import.meta.env.VITE_API || 'fallback-key'
+            },
+            ...options
         };
 
         let response;
@@ -44,13 +46,13 @@ const apiCall = async (config) => {
         return response;
     } catch (error) {
         console.error(`API call failed [${method.toUpperCase()} ${url}]:`, error);
-        
+
         const apiError = {
             message: error.response?.data?.message || error.message,
             status: error.response?.status,
             data: error.response?.data,
         };
-        
+
         throw apiError;
     }
 }

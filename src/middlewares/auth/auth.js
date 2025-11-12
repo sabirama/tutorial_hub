@@ -15,4 +15,10 @@ const logout = () => {
     alert("You have been logged out.");
 }
 
-export { setAuth, getAuth, logout };
+const getUserId = () => {
+    const token = sessionStorage.getItem('token');
+    const userId = token?.split('|')[0]
+   return userId || 0;
+}
+
+export { setAuth, getAuth, logout, getUserId };

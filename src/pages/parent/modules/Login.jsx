@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
+import apiCall from "../../../middlewares/api/axios";
 
 const Login = () => {
     const [pageVars, setPageVars] = useState({
@@ -9,16 +10,37 @@ const Login = () => {
     });
 
     const navigate = useNavigate()
+    const { username, password } = pageVars
+    const form = { username, password }
 
-    function handleSubmit(e) {1
+    async function handleSubmit(e) {
         e.preventDefault();
-        navigate("/parent/dashboard")
+        try {
+            const response = await apiCall({
+                method: 'post',
+                url: '/parents/login',
+                data: form,
+                headers: {
+                    'Access': 'parent',
+                },
+                options: {
+                    timeout: 10000
+                }
+            })
+
+            if (response.data.data) {
+                sessionStorage.setItem('token', response.data.data.token);
+                navigate("/parent/dashboard");
+            }
+        } catch (e) {
+            alert(e.message);
+        }
     }
 
     function handleVarChange(key, e) {
         setPageVars({ ...pageVars, [key]: e.target.value });
     }
-    
+
     return (
         <div className="form-container">
             <form>
@@ -36,7 +58,7 @@ const Login = () => {
                     </span>
                 </div>
                 <button onClick={handleSubmit}>Submit</button>
-               <p className="form-switch">Don't have an Account? <Link to={"/parent/register"}>Register</Link></p>
+                <p className="form-switch">Don't have an Account? <Link to={"/parent/register"}>Register</Link></p>
             </form>
         </div>
     )

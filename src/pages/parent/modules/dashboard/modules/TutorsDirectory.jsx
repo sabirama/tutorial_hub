@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import "../../../../../assets/css/TutorsDirectory.css"
+import apiCall from '../../../../../middlewares/api/axios';
 
 const TutorsDirectory = () => {
   const [tutors, setTutors] = useState([
@@ -124,6 +125,13 @@ const TutorsDirectory = () => {
       responseTime: 'Within 2 hours'
     }
   ]);
+
+  async function getTutors() {
+    const response = await apiCall({
+      url: '/tutors',
+      method: 'get',
+    })
+  }
 
   const [filters, setFilters] = useState({
     search: '',

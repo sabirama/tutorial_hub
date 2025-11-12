@@ -1,28 +1,48 @@
 import { useState } from "react"
-import { Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import apiCall from "../../../middlewares/api/axios";
 
 const Register = () => {
     const [pageVars, setPageVars] = useState({
         full_name: "",
         contact_number: "",
+        email: "",
         username: "",
         password: "",
         hidePass: true,
         hideCPass: true
     });
- const navigate = useNavigate()
 
-    function handleSubmit(e) {1
+    const navigate = useNavigate()
+    const { full_name, contact_number, email, username, password } = pageVars
+    const form = { full_name, contact_number, email, username, password }
+
+    async function handleSubmit(e) {
         e.preventDefault();
-        navigate("/parent/dashboard")
+        try {
+            const response = await apiCall({
+                method: 'post',
+                url: '/parents/register',
+                data: form,
+                headers: {
+                    'Access': 'parent',
+                },
+                options: {
+                    timeout: 10000
+                }
+            })
+            if (response.data.data) {
+                sessionStorage.setItem('token', response.data.data.token);
+                navigate("/parent/dashboard");
+            }
+        } catch (e) {
+            alert(e.message);
+        }
     }
 
     function handleVarChange(key, e) {
         setPageVars({ ...pageVars, [key]: e.target.value });
     }
-
-    const { full_name, contact_number, username, password } = pageVars
-    const form = { full_name, contact_number, username, password }
 
     return (
         <div className="form-container">
@@ -34,13 +54,19 @@ const Register = () => {
                 </div>
                 <div>
                     <label>Contact Number</label>
-                    <input type="text" name="fcontact_number" onChange={(e) => handleVarChange("contact_number", e)} />
+                    <input type="text" name="contact_number" onChange={(e) => handleVarChange("contact_number", e)} />
                 </div>
+
+                <div>
+                    <label>Email</label>
+                    <input type="text" name="email" onChange={(e) => handleVarChange("email", e)} />
+                </div>
+
                 <div>
                     <label>Username</label>
                     <input type="text" name="username" onChange={(e) => handleVarChange("username", e)} />
                 </div>
-               <div>
+                <div>
                     <label>Password</label>
                     <span className="password-container">
                         <input type={pageVars.hidePass ? "password" : "text"} name="password" onChange={(e) => handleVarChange("password", e)} />
@@ -50,11 +76,11 @@ const Register = () => {
                 <div>
                     <label>Confirm Password</label>
                     <span className="password-container">
-                        <input type={pageVars.hidePass ? "password" : "text"} name="confirm_password" />
+                        <input type={pageVars.hideCPass ? "password" : "text"} name="confirm_password" />
                         <i onClick={(e) => { setPageVars({ ...pageVars, hideCPass: !pageVars.hideCPass }, e) }}>{pageVars.hideCPass ? "🔒" : "🔓"}</i>
                     </span>
                 </div>
-                <button onClick={handleSubmit}>Submit</button>
+                <button onClick={(e) => handleSubmit(e)}>Submit</button>
                 <p className="form-switch">Already have an Account? <Link to={"/parent/login"}>Login</Link></p>
             </form>
         </div>

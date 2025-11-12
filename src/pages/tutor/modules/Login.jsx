@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
+import apiCall from "../../../middlewares/api/axios";
 
 const Login = () => {
     const [pageVars, setPageVars] = useState({
@@ -9,10 +10,30 @@ const Login = () => {
     });
 
     const navigate = useNavigate()
+    const { username, password } = pageVars;
+    const form = { username, password }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
-        navigate("/tutor/dashboard")
+        try {
+            const response = await apiCall({
+                method: 'post',
+                url: '/tutors/login',
+                data: form,
+                headers: {
+                    'Access': 'tutor',
+                },
+                options: {
+                    timeout: 10000
+                }
+            })
+            if (response.data.data) {
+                sessionStorage.setItem('token', response.data.data.token)
+                navigate("/tutor/dashboard")
+            }
+        } catch (e) {
+            alert(e.message)
+        }
     }
 
     function handleVarChange(key, e) {
@@ -23,8 +44,11 @@ const Login = () => {
         <div className="form-container">
             <form>
                 <h3>LOGIN</h3>
+                <div>
+                    <label>Username</label>
+                    <input type="text" name="username" onChange={(e) => handleVarChange("username", e)} />
+                </div>
 
-                <input type="text" name="username" onChange={(e) => handleVarChange("username", e)} />
                 <div>
                     <label>Password</label>
                     <span className="password-container">

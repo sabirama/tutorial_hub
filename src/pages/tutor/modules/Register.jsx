@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
+import apiCall from "../../../middlewares/api/axios";
 
 const Register = () => {
     const [pageVars, setPageVars] = useState({
@@ -40,10 +41,31 @@ const Register = () => {
     ];
 
     const navigate = useNavigate()
+    const { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
+    const form = { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
-        navigate("/tutor/dashboard")
+
+        try {
+            const response = await apiCall({
+                method: 'post',
+                url: '/tutors/register',
+                data: form,
+                headers: {
+                    'Access': 'tutor',
+                },
+                options: {
+                    timeout: 10000
+                }
+            })
+            if (response.data.data) {
+                sessionStorage.setItem('token', response.data.data.token)
+                navigate("/tutor/dashboard")
+            }
+        } catch (e) {
+            alert(e.message)
+        }
     }
 
     function handleVarChange(key, e) {
@@ -66,9 +88,6 @@ const Register = () => {
             }
         });
     }
-
-    const { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
-    const form = { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered }
 
     return (
         <div className="form-container">

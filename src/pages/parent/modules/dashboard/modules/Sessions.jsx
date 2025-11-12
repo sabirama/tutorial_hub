@@ -1,69 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "../../../../../assets/css/Sessions.css"
+import apiCall from '../../../../../middlewares/api/axios';
+import { getUserId } from '../../../../../middlewares/auth/auth';
 
 const Sessions = () => {
-  const [sessions, setSessions] = useState([
-    {
-      id: 1,
-      date: "2024-01-15",
-      time: "14:00 - 15:30",
-      subject: "Mathematics",
-      tutor: "John Smith",
-      status: "upcoming",
-      duration: "1.5 hours",
-      location: "Online",
-      notes: "Algebra basics"
-    },
-    {
-      id: 2,
-      date: "2024-01-10",
-      time: "10:00 - 11:00",
-      subject: "Physics",
-      tutor: "Maria Garcia",
-      status: "completed",
-      duration: "1 hour",
-      location: "Library",
-      notes: "Newton's Laws"
-    },
-    {
-      id: 3,
-      date: "2024-01-18",
-      time: "16:00 - 17:30",
-      subject: "Computer Science",
-      tutor: "David Kim",
-      status: "upcoming",
-      duration: "1.5 hours",
-      location: "Student Center",
-      notes: "Python programming"
-    },
-    {
-      id: 4,
-      date: "2024-01-05",
-      time: "13:00 - 14:00",
-      subject: "Chemistry",
-      tutor: "Sarah Williams",
-      status: "completed",
-      duration: "1 hour",
-      location: "Online",
-      notes: "Organic chemistry"
-    },
-    {
-      id: 5,
-      date: "2024-01-20",
-      time: "09:00 - 10:30",
-      subject: "Biology",
-      tutor: "James Brown",
-      status: "upcoming",
-      duration: "1.5 hours",
-      location: "Home",
-      notes: "Cell biology"
-    }
-  ]);
-
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  console.log(sessions)
+  useEffect(() => {
+    async function fetchSessions() {
+      try {
+        const response = await apiCall({
+          method: 'get',
+          url: `/sessions?parent_id=${getUserId()}`,
+        });
+        setSessions(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+        setSessions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const filteredSessions = sessions.filter(session => 
-    statusFilter === 'all' || session.status === statusFilter
+    fetchSessions();
+  }, []);
+
+  const filteredSessions = sessions.filter(session =>
+    statusFilter === 'all' || session?.status === statusFilter
   );
 
   const formatDate = (dateString) => {
@@ -80,6 +45,17 @@ const Sessions = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="sessions-page">
+        <div className="sessions-header">
+          <h1>My Sessions</h1>
+          <p>Loading sessions...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="sessions-page">
       <div className="sessions-header">
@@ -88,8 +64,8 @@ const Sessions = () => {
       </div>
 
       <div className="sessions-controls">
-        <select 
-          value={statusFilter} 
+        <select
+          value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="status-filter"
         >
@@ -109,8 +85,8 @@ const Sessions = () => {
           filteredSessions.map(session => (
             <div key={session.id} className="session-card">
               <div className="session-header">
-                <h3 className="session-subject">{session.subject}</h3>
-                <span 
+                <h3 className="session-subject">{session.subject_name}</h3>
+                <span
                   className="session-status"
                   style={{ backgroundColor: getStatusColor(session.status) }}
                 >
@@ -135,7 +111,11 @@ const Sessions = () => {
               <div className="session-participants">
                 <div className="participant">
                   <span className="label">Tutor:</span>
-                  <span className="name">{session.tutor}</span>
+                  <span className="name">{session.tutor_name}</span>
+                </div>
+                <div className="participant">
+                   <span className="label">Child:</span>
+                  <span className="name">{session.child_name}</span>
                 </div>
               </div>
 
@@ -147,7 +127,6 @@ const Sessions = () => {
               )}
 
               <div className="session-actions">
-                <button className="btn-primary">View Details</button>
                 {session.status === 'upcoming' && (
                   <>
                     <button className="btn-secondary">Reschedule</button>
