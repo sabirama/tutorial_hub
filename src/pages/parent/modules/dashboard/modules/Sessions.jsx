@@ -7,7 +7,6 @@ const Sessions = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
-  console.log(sessions)
   useEffect(() => {
     async function fetchSessions() {
       try {

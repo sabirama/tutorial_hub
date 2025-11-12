@@ -1,95 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import "../../../../../assets/css/ParentTutors.css"
+import apiCall from '../../../../../middlewares/api/axios';
+import { getUserId } from '../../../../../middlewares/auth/auth';
+
 const ParentTutors = () => {
   const [activeTab, setActiveTab] = useState('current');
   const [ratingModal, setRatingModal] = useState({ isOpen: false, tutor: null });
-
-  const [tutors, setTutors] = useState([
-    {
-      id: 1,
-      name: 'John Smith',
-      email: 'john.smith@email.com',
-      contact: '(555) 123-4567',
-      location: 'New York, NY',
-      subjects: ['Mathematics', 'Algebra', 'Calculus'],
-      hourlyRate: '$35',
-      experience: '5 years',
-      education: 'BS Mathematics, University of California',
-      rating: 4.8,
-      myRating: 5,
-      myReview: 'Excellent tutor! My children improved significantly in math.',
-      totalSessions: 24,
-      activeSessions: 2,
-      status: 'active',
-      joinDate: '2023-01-15',
-      lastSession: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Maria Garcia',
-      email: 'maria.g@email.com',
-      contact: '(555) 234-5678',
-      location: 'San Francisco, CA',
-      subjects: ['Physics', 'Chemistry'],
-      hourlyRate: '$40',
-      experience: '3 years',
-      education: 'MS Physics, Stanford University',
-      rating: 4.9,
-      myRating: null,
-      myReview: null,
-      totalSessions: 18,
-      activeSessions: 1,
-      status: 'active',
-      joinDate: '2023-02-20',
-      lastSession: '2024-01-14'
-    },
-    {
-      id: 3,
-      name: 'David Kim',
-      email: 'david.kim@email.com',
-      contact: '(555) 345-6789',
-      location: 'Chicago, IL',
-      subjects: ['Computer Science', 'Programming'],
-      hourlyRate: '$45',
-      experience: '4 years',
-      education: 'BS Computer Science, MIT',
-      rating: 4.7,
-      myRating: 4,
-      myReview: 'Very knowledgeable and patient with my son.',
-      totalSessions: 12,
-      activeSessions: 0,
-      status: 'inactive',
-      joinDate: '2023-03-10',
-      lastSession: '2023-12-20'
-    },
-    {
-      id: 4,
-      name: 'Sarah Williams',
-      email: 'sarah.w@email.com',
-      contact: '(555) 456-7890',
-      location: 'Boston, MA',
-      subjects: ['English', 'Literature'],
-      hourlyRate: '$30',
-      experience: '2 years',
-      education: 'BA English, Harvard University',
-      rating: 4.5,
-      myRating: null,
-      myReview: null,
-      totalSessions: 8,
-      activeSessions: 0,
-      status: 'pending',
-      joinDate: '2023-04-05',
-      lastSession: '2023-11-15'
-    }
-  ]);
-
   const [ratingForm, setRatingForm] = useState({
     rating: 0,
     review: '',
     wouldRecommend: true
   });
 
+  const [tutors, setTutors] = useState([]);
+
+  useEffect(() => {
+    async function fetchTutors() {
+      try {
+        const response = await apiCall({
+          method: 'get',
+          url: `/parents/${getUserId()}/tutors`,
+        });
+        setTutors(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching tutors:', error);
+        setTutors([]);
+      } 
+    }
+
+    fetchTutors();
+  }, []);
+
   const filteredTutors = tutors.filter(tutor => {
+    if (!tutor) return false;
     if (activeTab === 'current') return tutor.status === 'active';
     if (activeTab === 'past') return tutor.status === 'inactive';
     return true;
@@ -106,15 +49,14 @@ const ParentTutors = () => {
 
   const handleSubmitRating = (e) => {
     e.preventDefault();
-    
-    setTutors(prev => prev.map(tutor => 
-      tutor.id === ratingModal.tutor.id 
-        ? { 
-            ...tutor, 
-            myRating: ratingForm.rating, 
-            myReview: ratingForm.review,
-            rating: ((tutor.rating * (tutor.totalSessions - 1)) + ratingForm.rating) / tutor.totalSessions
-          }
+
+    setTutors(prev => prev.map(tutor =>
+      tutor.id === ratingModal.tutor.id
+        ? {
+          ...tutor,
+          myRating: ratingForm.rating,
+          myReview: ratingForm.review,
+        }
         : tutor
     ));
 
@@ -127,15 +69,16 @@ const ParentTutors = () => {
   };
 
   const renderStars = (rating, interactive = false, onStarClick = null) => {
+    const numericRating = parseFloat(rating) || 0;
     return (
       <div className="stars">
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}
-            className={`star ${star <= rating ? 'filled' : ''} ${interactive ? 'interactive' : ''}`}
+            className={`star ${star <= numericRating ? 'filled' : ''} ${interactive ? 'interactive' : ''}`}
             onClick={interactive ? () => onStarClick(star) : null}
           >
-            {star <= rating ? '★' : '☆'}
+            {star <= numericRating ? '★' : '☆'}
           </span>
         ))}
       </div>
@@ -169,19 +112,19 @@ const ParentTutors = () => {
 
       {/* Tabs */}
       <div className="tabs">
-        <button 
+        <button
           className={`tab ${activeTab === 'current' ? 'active' : ''}`}
           onClick={() => setActiveTab('current')}
         >
-          Current Tutors ({tutors.filter(t => t.status === 'active').length})
+          Current Tutors ({tutors.filter(t => t?.status === 'active').length})
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'past' ? 'active' : ''}`}
           onClick={() => setActiveTab('past')}
         >
-          Past Tutors ({tutors.filter(t => t.status === 'inactive').length})
+          Past Tutors ({tutors.filter(t => t?.status === 'inactive').length})
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => setActiveTab('all')}
         >
@@ -191,101 +134,107 @@ const ParentTutors = () => {
 
       {/* Tutors Grid */}
       <div className="tutors-grid">
-        {filteredTutors.map(tutor => (
-          <div key={tutor.id} className="tutor-card">
-            <div className="tutor-header">
-              <div className="tutor-info">
-                <div className="avatar">
-                  {tutor.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                  <h3>{tutor.name}</h3>
-                  <p>{tutor.location}</p>
-                </div>
-              </div>
-              <div className="tutor-stats">
-                <span 
-                  className="status-badge"
-                  style={{ backgroundColor: getStatusColor(tutor.status) }}
-                >
-                  {getStatusText(tutor.status)}
-                </span>
-                <div className="rating-display">
-                  {renderStars(tutor.rating)}
-                  <span className="rating-value">({tutor.rating})</span>
-                </div>
-              </div>
-            </div>
+        {filteredTutors.map(tutor => {
+          // Use the actual API response data structure
+          const tutorName = tutor.tutor_name || 'Unknown Tutor';
+          const tutorLocation = tutor.tutor_location || 'Location not specified';
+          const tutorRating = tutor.tutor_rating || 0;
+          const tutorEmail = tutor.tutor_email || 'No email';
+          const tutorContact = tutor.tutor_contact || 'No contact';
+          const tutorSubjects = [tutor.subject_name].filter(Boolean); // Single subject from API
 
-            <div className="tutor-details">
-              <div className="detail-item">
-                <span className="label">Hourly Rate:</span>
-                <span className="value">{tutor.hourlyRate}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">Experience:</span>
-                <span className="value">{tutor.experience}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">Education:</span>
-                <span className="value">{tutor.education}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">Total Sessions:</span>
-                <span className="value">{tutor.totalSessions}</span>
-              </div>
-            </div>
-
-            <div className="subjects-section">
-              <h4>Subjects:</h4>
-              <div className="subjects-list">
-                {tutor.subjects.map((subject, index) => (
-                  <span key={index} className="subject-tag">
-                    {subject}
+          return (
+            <div key={tutor.id} className="tutor-card">
+              <div className="tutor-header">
+                <div className="tutor-info">
+                  <div className="avatar">
+                    {tutorName.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <h3>{tutorName}</h3>
+                    <p>{tutorLocation}</p>
+                  </div>
+                </div>
+                <div className="tutor-stats">
+                  <span
+                    className="status-badge"
+                    style={{ backgroundColor: getStatusColor(tutor.status) }}
+                  >
+                    {getStatusText(tutor.status)}
                   </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="contact-info">
-              <div className="contact-item">
-                <span>📧</span>
-                <span>{tutor.email}</span>
-              </div>
-              <div className="contact-item">
-                <span>📞</span>
-                <span>{tutor.contact}</span>
-              </div>
-            </div>
-
-            {tutor.myReview && (
-              <div className="my-review-section">
-                <h4>Your Review:</h4>
-                <div className="review-content">
-                  {renderStars(tutor.myRating)}
-                  <p>{tutor.myReview}</p>
+                  <div className="rating-display">
+                    {renderStars(tutorRating)}
+                    <span className="rating-value">({tutorRating})</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="card-actions">
-              <button 
-                className="rate-btn"
-                onClick={() => handleRateTutor(tutor)}
-              >
-                {tutor.myRating ? 'Update Rating' : 'Rate Tutor'}
-              </button>
-              <button className="message-btn">
-                Message
-              </button>
-              {tutor.status === 'active' && (
-                <button className="schedule-btn">
-                  Schedule Session
-                </button>
+              <div className="tutor-details">
+                <div className="detail-item">
+                  <span className="label">Subject:</span>
+                  <span className="value">{tutor.subject_name}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="label">Course:</span>
+                  <span className="value">{tutor.tutor_course || 'Not specified'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="label">Relationship Created:</span>
+                  <span className="value">{new Date(tutor.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              <div className="subjects-section">
+                <h4>Subject:</h4>
+                <div className="subjects-list">
+                  {tutorSubjects.map((subject, index) => (
+                    <span key={index} className="subject-tag">
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="contact-info">
+                <div className="contact-item">
+                  <span>📧</span>
+                  <span>{tutorEmail}</span>
+                </div>
+                <div className="contact-item">
+                  <span>📞</span>
+                  <span>{tutorContact}</span>
+                </div>
+              </div>
+
+              {tutor.myReview && (
+                <div className="my-review-section">
+                  <h4>Your Review:</h4>
+                  <div className="review-content">
+                    {renderStars(tutor.myRating)}
+                    <p>{tutor.myReview}</p>
+                  </div>
+                </div>
               )}
+
+              <div className="card-actions">
+                <button
+                  className="rate-btn"
+                  onClick={() => handleRateTutor(tutor)}
+                >
+                  {tutor.myRating ? 'Update Rating' : 'Rate Tutor'}
+                </button>
+                <button className="message-btn">
+                  Message
+                </button>
+                {tutor.status === 'active' && (
+                  <button className="schedule-btn">
+                    Schedule Session
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Rating Modal */}
@@ -293,8 +242,8 @@ const ParentTutors = () => {
         <div className="modal-overlay">
           <div className="rating-modal">
             <div className="modal-header">
-              <h2>Rate {ratingModal.tutor?.name}</h2>
-              <button 
+              <h2>Rate {ratingModal.tutor?.tutor_name}</h2>
+              <button
                 className="close-btn"
                 onClick={() => setRatingModal({ isOpen: false, tutor: null })}
               >
@@ -304,11 +253,11 @@ const ParentTutors = () => {
 
             <div className="tutor-preview">
               <div className="avatar">
-                {ratingModal.tutor?.name.split(' ').map(n => n[0]).join('')}
+                {ratingModal.tutor?.tutor_name?.split(' ').map(n => n[0]).join('')}
               </div>
               <div>
-                <h4>{ratingModal.tutor?.name}</h4>
-                <p>{ratingModal.tutor?.subjects.join(', ')}</p>
+                <h4>{ratingModal.tutor?.tutor_name}</h4>
+                <p>{ratingModal.tutor?.subject_name}</p>
               </div>
             </div>
 
@@ -357,14 +306,14 @@ const ParentTutors = () => {
               </div>
 
               <div className="modal-actions">
-                <button 
+                <button
                   type="button"
                   className="cancel-btn"
                   onClick={() => setRatingModal({ isOpen: false, tutor: null })}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="submit-btn"
                   disabled={ratingForm.rating === 0}
