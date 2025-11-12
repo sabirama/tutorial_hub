@@ -1,28 +1,28 @@
 import express from 'express';
 import { tutorsController } from '../../controllers/tutors_controller.js';
-
+import { requireToken } from '../../middleware/auth.js';
 const router = express.Router();
 
 // Public routes
-router.post('/register', tutorsController.createTutor);
+router.post('/register', tutorsController.registerTutor);
 router.post('/login', tutorsController.loginTutor);
 
 // Stats and filters
-router.get('/stats/courses', tutorsController.getUniqueCourses);
-router.get('/stats/locations', tutorsController.getUniqueLocations);
+router.get('/stats/courses', requireToken, tutorsController.getUniqueCourses);
+router.get('/stats/locations', requireToken, tutorsController.getUniqueLocations);
 
 // Tutor management
-router.get('/', tutorsController.getTutors);
-router.get('/:id', tutorsController.getTutorById);
-router.get('/:id/profile', tutorsController.getTutorProfile);
-router.put('/:id', tutorsController.updateTutor);
-router.put('/:id/password', tutorsController.changePassword);
-router.post('/:id/reset-password', tutorsController.resetPassword);
-router.delete('/:id', tutorsController.deleteTutor);
+router.get('/', requireToken, tutorsController.getTutors);
+router.get('/:id', requireToken, tutorsController.getTutorById);
+router.get('/:id/profile', requireToken, tutorsController.getTutorProfile);
+router.put('/:id', requireToken, tutorsController.updateTutor);
+router.put('/:id/password', requireToken, tutorsController.changePassword);
+router.post('/:id/reset-password', requireToken, tutorsController.resetPassword);
+router.delete('/:id', requireToken, tutorsController.deleteTutor);
 
 // Tutor related data
-router.get('/:id/availability', tutorsController.getTutorAvailability);
-router.get('/:id/sessions', tutorsController.getTutorSessions);
-router.get('/:id/session-requests', tutorsController.getTutorSessionRequests);
+router.get('/:id/availability', requireToken, tutorsController.getTutorAvailability);
+router.get('/:id/sessions', requireToken, tutorsController.getTutorSessions);
+router.get('/:id/session-requests', requireToken, tutorsController.getTutorSessionRequests);
 
 export default router;

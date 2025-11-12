@@ -13,7 +13,7 @@ Server.use(express.urlencoded({ extended: true }));
 Server.use(cors({
     origin: '*', // Your frontend URL
     credentials: true,
-    allowedHeaders: ['Content-Type', 'App-Key', 'Token'] // Allow your custom headers
+    allowedHeaders: ['Content-Type', 'App-Key', 'Token', 'Access'] // Allow your custom headers
 }));
 
 // Routes - use auth without parentheses

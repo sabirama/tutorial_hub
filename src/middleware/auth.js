@@ -1,9 +1,13 @@
 import { config } from "dotenv";
 config();
 
-const auth = (req, res, next) => {
+function auth(req, res, next) {
     const appKey = req.headers['app-key'];
     const token = req.headers['token'];
+    
+    console.log('Auth Debug - APP_KEY:', process.env.APP_KEY);
+    console.log('Auth Debug - Headers:', { appKey, token });
+
     // Check if App Key is valid
     if (appKey !== process.env.APP_KEY) {
         console.log('Unauthenticated: Invalid App Key');
@@ -13,8 +17,18 @@ const auth = (req, res, next) => {
         });
     }
 
+    // If all checks pass, continue to next middleware/route
+    console.log('Authentication successful');
+    next();
+}
+
+export function requireToken(req, res, next) {
+    console.log("🔐 requireToken middleware executing");
+    
+    const token = req.headers['token']; // ← FIX: Define token variable
+    
     // For POST, PUT, DELETE methods, require token
-    if (['POST', 'PUT', 'DELETE'].includes(req.method.toUpperCase())) {
+    if (req.headers['Access'] === 'user') {
         if (!token) {
             console.log('Unauthenticated: Token required');
             return res.status(401).json({
@@ -24,9 +38,8 @@ const auth = (req, res, next) => {
         }
 
         // Add your token verification logic here
-        // Example: verify JWT token or check against database
-        const isTokenValid = verifyToken(token); // You need to implement this
-        
+        const isTokenValid = verifyToken(token);
+
         if (!isTokenValid) {
             console.log('Unauthenticated: Invalid token');
             return res.status(401).json({
@@ -35,17 +48,14 @@ const auth = (req, res, next) => {
             });
         }
     }
-
-    // If all checks pass, continue to next middleware/route
-    console.log('Authentication successful');
+    
+    // Always call next() unless you return an error
     next();
 }
 
-// Example token verification function (you need to implement based on your auth system)
+// Example token verification function
 const verifyToken = (token) => {
-    // Implement your token verification logic
-    // This could be JWT verification, database check, etc.
-    return token && token.length > 0; // Simple example
+    return token && token.length > 0;
 }
 
 export default auth;

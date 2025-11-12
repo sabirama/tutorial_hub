@@ -108,94 +108,6 @@ export class TutorsController {
         }
     }
     
-    // POST /api/tutors - Create new tutor
-    async createTutor(req, res) {
-        try {
-            const {
-                full_name,
-                contact_number,
-                email,
-                course,
-                location,
-                facebook,
-                username,
-                password,
-                status = 'active',
-                rating = 0.0
-            } = req.body;
-            
-            // Validation
-            if (!full_name || !email || !username || !password) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Full name, email, username, and password are required'
-                });
-            }
-            
-            // Validate password strength
-            const strengthCheck = AuthUtils.validatePasswordStrength(password);
-            if (!strengthCheck.isValid) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password does not meet security requirements',
-                    suggestions: strengthCheck.suggestions
-                });
-            }
-            
-            // Hash password
-            const hashedPassword = await AuthUtils.hashPassword(password);
-            
-            const result = await query({
-                action: 'create',
-                table: 'tutors',
-                data: {
-                    full_name,
-                    contact_number: contact_number || null,
-                    email,
-                    course: course || null,
-                    location: location || null,
-                    facebook: facebook || null,
-                    username,
-                    password: hashedPassword,
-                    status,
-                    join_date: new Date().toISOString().split('T')[0],
-                    rating: parseFloat(rating) || 0.0
-                }
-            });
-            
-            // Fetch the created tutor (without password)
-            const newTutor = await query({
-                action: 'read',
-                table: 'tutors',
-                get: 'id, full_name, email, course, location, status, join_date, rating',
-                where: { id: result.insertId }
-            });
-            
-            res.status(201).json({
-                success: true,
-                message: 'Tutor created successfully',
-                data: newTutor[0]
-            });
-            
-        } catch (error) {
-            console.error('Create tutor error:', error);
-            
-            // Handle duplicate entry errors
-            if (error.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Email or username already exists'
-                });
-            }
-            
-            res.status(500).json({ 
-                success: false, 
-                error: 'Failed to create tutor',
-                message: error.message 
-            });
-        }
-    }
-    
     // PUT /api/tutors/:id - Update tutor
     async updateTutor(req, res) {
         try {
@@ -243,7 +155,7 @@ export class TutorsController {
             const updatedTutor = await query({
                 action: 'read',
                 table: 'tutors',
-                get: 'id, full_name, email, course, location, status, join_date, rating',
+                get: 'id, full_name, email, course, location, status, rating',
                 where: { id }
             });
             
@@ -455,24 +367,112 @@ export class TutorsController {
         }
     }
 
-    // POST /api/tutors/login - Tutor login
-    async loginTutor(req, res) {
+     // POST /api/tutors - Create new tutor
+    async registerTutor(req, res) {
         try {
-            const { email, password } = req.body;
+            const {
+                full_name,
+                contact_number,
+                email,
+                course,
+                location,
+                facebook,
+                username,
+                password,
+                status = 'active',
+                rating = 0.0
+            } = req.body;
             
-            if (!email || !password) {
+            // Validation
+            if (!full_name || !email || !username || !password) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Email and password are required'
+                    error: 'Full name, email, username, and password are required'
                 });
             }
             
-            // Find tutor by email
+            // Validate password strength
+            const strengthCheck = AuthUtils.validatePasswordStrength(password);
+            if (!strengthCheck.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password does not meet security requirements',
+                    suggestions: strengthCheck.suggestions
+                });
+            }
+            
+            // Hash password
+            const hashedPassword = await AuthUtils.hashPassword(password);
+            
+            const result = await query({
+                action: 'create',
+                table: 'tutors',
+                data: {
+                    full_name,
+                    contact_number: contact_number || null,
+                    email,
+                    course: course || null,
+                    location: location || null,
+                    facebook: facebook || null,
+                    username,
+                    password: hashedPassword,
+                    status,
+                    rating: parseFloat(rating) || 0.0
+                }
+            });
+            
+            // Fetch the created tutor (without password)
+            const newTutor = await query({
+                action: 'read',
+                table: 'tutors',
+                get: 'id, full_name, email, course, location, status, rating',
+                where: { id: result.insertId }
+            });
+            
+            res.status(201).json({
+                success: true,
+                message: 'Tutor created successfully',
+                data: newTutor[0]
+            });
+            
+        } catch (error) {
+            console.error('Create tutor error:', error);
+            
+            // Handle duplicate entry errors
+            if (error.code === 'ER_DUP_ENTRY') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email or username already exists'
+                });
+            }
+            
+            res.status(500).json({ 
+                success: false, 
+                error: 'Failed to create tutor',
+                message: error.message 
+            });
+        }
+    }
+
+    // POST /api/tutors/login - Tutor login
+    async loginTutor(req, res) {
+        console.log(req.body)
+        try {
+            const { username, password } = req.body;
+            
+            if (!username || !password) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username and password are required'
+                });
+            }
+            
+            // Find tutor by username
             const tutors = await query({
                 action: 'read',
                 table: 'tutors',
                 where: { 
-                    email: email.toLowerCase().trim(),
+                    username: username.toLowerCase().trim(),
                     status: 'active'
                 }
             });
@@ -480,7 +480,7 @@ export class TutorsController {
             if (tutors.length === 0) {
                 return res.status(401).json({
                     success: false,
-                    error: 'Invalid email or password'
+                    error: 'Invalid username or password'
                 });
             }
             
@@ -492,7 +492,7 @@ export class TutorsController {
             if (!isPasswordValid) {
                 return res.status(401).json({
                     success: false,
-                    error: 'Invalid email or password'
+                    error: 'Invalid username or password'
                 });
             }
             
