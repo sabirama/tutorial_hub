@@ -28,6 +28,7 @@ const Login = () => {
                 }
             })
             if (response.data.data) {
+                console.log(response.data.data);
                 sessionStorage.setItem('token', response.data.data.token)
                 navigate("/tutor/dashboard")
             }

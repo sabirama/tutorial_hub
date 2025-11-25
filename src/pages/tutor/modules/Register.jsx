@@ -4,7 +4,9 @@ import apiCall from "../../../middlewares/api/axios";
 
 const Register = () => {
     const [pageVars, setPageVars] = useState({
-        full_name: "",
+        first_name: "",
+        middle_name: "",
+        last_name: "",
         contact_number: "",
         email: "",
         course: "",
@@ -41,8 +43,8 @@ const Register = () => {
     ];
 
     const navigate = useNavigate()
-    const { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
-    const form = { full_name, contact_number, username, password, email, course, location, facebook, subjects_offered }
+    const { first_name, middle_name, last_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
+    const form = { full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`.trim(), contact_number, username, password, email, course, location, facebook, subjects_offered }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -95,7 +97,9 @@ const Register = () => {
                 <h3>REGISTER</h3>
                 <div>
                     <label>Full Name</label>
-                    <input type="text" name="full_name" onChange={(e) => handleVarChange("full_name", e)} />
+                    <input type="text" name="first_name" placeholder="first name" onChange={(e) => handleVarChange("first_name", e)} />
+                    <input type="text" name="middle_name" placeholder="middle name" onChange={(e) => handleVarChange("middle_name", e)} />
+                    <input type="text" name="last_name" placeholder="last name" onChange={(e) => handleVarChange("last_name", e)} />
                 </div>
 
                 <div>

@@ -1,11 +1,16 @@
 import { Routes, Route, Link } from "react-router-dom";
 import Sessions from "./modules/Sessions";
-import TutorProfile from "./modules/Profile";
 import TutorParents from "./modules/TutorParents";
 import { useState } from "react";
 import SessionRequest from "./modules/SessionRequest";
+import TutorProfile from './modules/Profile';
 
 const DashboardRoutes = [
+    {
+        name: "dashboard",
+        path: "/",
+        element: TutorProfile
+    },
     {
         name: "sessions",
         path: "/sessions",
@@ -37,7 +42,7 @@ const Dashboard = () => {
                 <button className="mov" onClick={toggleDashboard}>☰</button>
                 <ul>
                     <li className="dashboard">
-                        <Link to={"/tutor/dashboard"}>Dashboard</Link>
+                        <Link to={"/tutor"}>Dashboard</Link>
                     </li>
                     <li>
                         <Link to={"/tutor/sessions"}>Sessions</Link>

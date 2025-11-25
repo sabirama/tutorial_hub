@@ -1,67 +1,66 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import "../../../../../assets/css/TutorParents.css"
+import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
+import apiCall from '../../../../../middlewares/api/axios';
+
 const TutorParents = () => {
   const [activeTab, setActiveTab] = useState('parents');
   const [ratingModal, setRatingModal] = useState({ isOpen: false, parent: null });
-
-  const [parents, setParents] = useState([
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah.j@email.com',
-      contact: '(555) 123-4567',
-      location: 'New York, NY',
-      joinDate: '2023-01-15',
-      totalSessions: 24,
-      children: [
-        { id: 1, name: 'Emma Johnson', grade: '8th Grade', age: 13, sessions: 12 },
-        { id: 2, name: 'Noah Johnson', grade: '6th Grade', age: 11, sessions: 12 }
-      ],
-      rating: 4.8,
-      review: 'Very cooperative and punctual. Always provides clear learning objectives.',
-      lastSession: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Michael Chen',
-      email: 'michael.c@email.com',
-      contact: '(555) 234-5678',
-      location: 'San Francisco, CA',
-      joinDate: '2023-02-20',
-      totalSessions: 18,
-      children: [
-        { id: 3, name: 'Alex Chen', grade: '10th Grade', age: 16, sessions: 18 }
-      ],
-      rating: 4.5,
-      review: 'Good communication and flexible with scheduling.',
-      lastSession: '2024-01-14'
-    },
-    {
-      id: 3,
-      name: 'Emily Davis',
-      email: 'emily.d@email.com',
-      location: 'Chicago, IL',
-      contact: '(555) 345-6789',
-      joinDate: '2023-03-10',
-      totalSessions: 32,
-      children: [
-        { id: 4, name: 'Sophia Davis', grade: '9th Grade', age: 14, sessions: 15 },
-        { id: 5, name: 'Liam Davis', grade: '7th Grade', age: 12, sessions: 10 },
-        { id: 6, name: 'Olivia Davis', grade: '5th Grade', age: 10, sessions: 7 }
-      ],
-      rating: null,
-      review: null,
-      lastSession: '2024-01-13'
-    }
-  ]);
-
+  const [parents, setParents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [ratingForm, setRatingForm] = useState({
     rating: 0,
     review: '',
     wouldRecommend: true
   });
 
-  const handleRateParent = (parent) => {
+  async function getParents() {
+    try {
+      const response = await apiCall({
+        method: 'get',
+        url: `/tutors/${getUserId()}/parents`,
+        headers: {
+          'token': getToken()
+        }
+      });
+      
+      if (response.data.success) {
+        // Transform API data to match component structure
+        const transformedParents = response.data.data.map(parent => ({
+          id: parent.id,
+          name: parent.parent_name,
+          email: parent.parent_email,
+          contact: parent.parent_contact,
+          location: parent.parent_location,
+          joinDate: parent.created_at,
+          totalSessions: 0, // You might need to fetch this separately
+          children: [
+            {
+              id: parent.id, // Using parent_tutor id as temporary child id
+              name: 'Student Name', // You'll need to fetch actual children data
+              grade: 'Grade', // You'll need to fetch actual children data
+              age: 'Age', // You'll need to fetch actual children data
+              sessions: 0 // You'll need to fetch actual session count
+            }
+          ],
+          rating: parent.rating,
+          review: parent.review,
+          lastSession: parent.last_session_date,
+          subject_name: parent.subject_name,
+          subject_description: parent.subject_description
+        }));
+        
+        setParents(transformedParents);
+      }
+    } catch (error) {
+      console.error('Error fetching parents:', error);
+      setParents([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleRateParent = async (parent) => {
     setRatingModal({ isOpen: true, parent });
     setRatingForm({
       rating: parent.rating || 0,
@@ -70,17 +69,37 @@ const TutorParents = () => {
     });
   };
 
-  const handleSubmitRating = (e) => {
+  const handleSubmitRating = async (e) => {
     e.preventDefault();
-    
-    setParents(prev => prev.map(parent => 
-      parent.id === ratingModal.parent.id 
-        ? { ...parent, rating: ratingForm.rating, review: ratingForm.review }
-        : parent
-    ));
 
-    setRatingModal({ isOpen: false, parent: null });
-    setRatingForm({ rating: 0, review: '', wouldRecommend: true });
+    try {
+      // Update parent rating via API
+      await apiCall({
+        method: 'put',
+        url: `/parent-tutors/${ratingModal.parent.id}`,
+        data: {
+          rating: ratingForm.rating,
+          review: ratingForm.review
+        },
+        headers: {
+          'token': getToken()
+        }
+      });
+
+      // Update local state
+      setParents(prev => prev.map(parent =>
+        parent.id === ratingModal.parent.id
+          ? { ...parent, rating: ratingForm.rating, review: ratingForm.review }
+          : parent
+      ));
+
+      setRatingModal({ isOpen: false, parent: null });
+      setRatingForm({ rating: 0, review: '', wouldRecommend: true });
+      alert('Rating submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      alert('Failed to submit rating. Please try again.');
+    }
   };
 
   const handleRatingChange = (newRating) => {
@@ -110,6 +129,21 @@ const TutorParents = () => {
     return '#ef4444';
   };
 
+  useEffect(() => {
+    getParents();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="tutor-parents">
+        <div className="page-header">
+          <h1>My Parents & Students</h1>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="tutor-parents">
       <div className="page-header">
@@ -119,13 +153,13 @@ const TutorParents = () => {
 
       {/* Tabs */}
       <div className="tabs">
-        <button 
+        <button
           className={`tab ${activeTab === 'parents' ? 'active' : ''}`}
           onClick={() => setActiveTab('parents')}
         >
           Parents ({parents.length})
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'students' ? 'active' : ''}`}
           onClick={() => setActiveTab('students')}
         >
@@ -136,80 +170,92 @@ const TutorParents = () => {
       {/* Parents Tab */}
       {activeTab === 'parents' && (
         <div className="parents-grid">
-          {parents.map(parent => (
-            <div key={parent.id} className="parent-card">
-              <div className="parent-header">
-                <div className="parent-info">
-                  <div className="avatar">
-                    {parent.name.split(' ').map(n => n[0]).join('')}
+          {parents.length === 0 ? (
+            <div className="no-parents">
+              <p>No parents found. You'll see parents here once they book sessions with you.</p>
+            </div>
+          ) : (
+            parents.map(parent => (
+              <div key={parent.id} className="parent-card">
+                <div className="parent-header">
+                  <div className="parent-info">
+                    <div className="avatar">
+                      {parent.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3>{parent.name}</h3>
+                      <p>{parent.location || 'No location specified'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3>{parent.name}</h3>
-                    <p>{parent.location}</p>
+                  <div className="parent-stats">
+                    <span className="sessions-count">{parent.totalSessions} sessions</span>
+                    {parent.rating && (
+                      <span
+                        className="rating-badge"
+                        style={{ backgroundColor: getRatingColor(parent.rating) }}
+                      >
+                        ⭐ {parent.rating}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="parent-stats">
-                  <span className="sessions-count">{parent.totalSessions} sessions</span>
-                  {parent.rating && (
-                    <span 
-                      className="rating-badge"
-                      style={{ backgroundColor: getRatingColor(parent.rating) }}
-                    >
-                      ⭐ {parent.rating}
-                    </span>
+
+                <div className="contact-info">
+                  <div className="contact-item">
+                    <span>📧</span>
+                    <span>{parent.email}</span>
+                  </div>
+                  <div className="contact-item">
+                    <span>📞</span>
+                    <span>{parent.contact || 'No contact provided'}</span>
+                  </div>
+                  <div className="contact-item">
+                    <span>📅</span>
+                    <span>Joined {new Date(parent.joinDate).toLocaleDateString()}</span>
+                  </div>
+                  {parent.subject_name && (
+                    <div className="contact-item">
+                      <span>📚</span>
+                      <span>{parent.subject_name}</span>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              <div className="contact-info">
-                <div className="contact-item">
-                  <span>📧</span>
-                  <span>{parent.email}</span>
-                </div>
-                <div className="contact-item">
-                  <span>📞</span>
-                  <span>{parent.contact}</span>
-                </div>
-                <div className="contact-item">
-                  <span>📅</span>
-                  <span>Joined {new Date(parent.joinDate).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="children-section">
-                <h4>Children:</h4>
-                <div className="children-list">
-                  {parent.children.map(child => (
-                    <div key={child.id} className="child-tag">
-                      {child.name} ({child.grade})
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {parent.review && (
-                <div className="review-section">
-                  <h4>Your Review:</h4>
-                  <div className="review-content">
-                    {renderStars(parent.rating)}
-                    <p>{parent.review}</p>
+                <div className="children-section">
+                  <h4>Children:</h4>
+                  <div className="children-list">
+                    {parent.children.map(child => (
+                      <div key={child.id} className="child-tag">
+                        {child.name} ({child.grade})
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
 
-              <div className="card-actions">
-                <button 
-                  className="rate-btn"
-                  onClick={() => handleRateParent(parent)}
-                >
-                  {parent.rating ? 'Update Rating' : 'Rate Parent'}
-                </button>
-                <button className="message-btn">
-                  Send Message
-                </button>
+                {parent.review && (
+                  <div className="review-section">
+                    <h4>Your Review:</h4>
+                    <div className="review-content">
+                      {renderStars(parent.rating)}
+                      <p>{parent.review}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="card-actions">
+                  <button
+                    className="rate-btn"
+                    onClick={() => handleRateParent(parent)}
+                  >
+                    {parent.rating ? 'Update Rating' : 'Rate Parent'}
+                  </button>
+                  <button className="message-btn">
+                    Send Message
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
@@ -229,25 +275,32 @@ const TutorParents = () => {
                 </tr>
               </thead>
               <tbody>
-                {parents.flatMap(parent => 
-                  parent.children.map(child => (
-                    <tr key={child.id}>
-                      <td className="student-name">
-                        <div className="name-avatar">
-                          <div className="avatar-sm">
-                            {child.name.split(' ').map(n => n[0]).join('')}
+                {parents.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="no-data">
+                      No students found
+                    </td>
+                  </tr>
+                ) : (
+                  parents.flatMap(parent =>
+                    parent.children.map(child => (
+                      <tr key={child.id}>
+                        <td className="student-name">
+                          <div className="name-avatar">
+                            <div className="avatar-sm">
+                              {child.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            {child.name}
                           </div>
-                          {child.name}
-                        </div>
-                      </td>
-                      <td>{child.grade}</td>
-                      <td>{child.age} years</td>
-                      <td className="parent-name">{parent.name}</td>
-                      <td>{child.sessions}</td>
-                      <td>{new Date(parent.lastSession).toLocaleDateString()}</td>
-
-                    </tr>
-                  ))
+                        </td>
+                        <td>{child.grade}</td>
+                        <td>{child.age} years</td>
+                        <td className="parent-name">{parent.name}</td>
+                        <td>{child.sessions}</td>
+                        <td>{parent.lastSession ? new Date(parent.lastSession).toLocaleDateString() : 'No sessions yet'}</td>
+                      </tr>
+                    ))
+                  )
                 )}
               </tbody>
             </table>
@@ -261,7 +314,7 @@ const TutorParents = () => {
           <div className="rating-modal">
             <div className="modal-header">
               <h2>Rate {ratingModal.parent?.name}</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setRatingModal({ isOpen: false, parent: null })}
               >
@@ -303,14 +356,14 @@ const TutorParents = () => {
               </div>
 
               <div className="modal-actions">
-                <button 
+                <button
                   type="button"
                   className="cancel-btn"
                   onClick={() => setRatingModal({ isOpen: false, parent: null })}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="submit-btn"
                   disabled={ratingForm.rating === 0}

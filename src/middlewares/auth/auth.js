@@ -1,6 +1,6 @@
 const setAuth = (authData, remember) => {
     const storage = remember ? localStorage : sessionStorage;
-    storage.setItem("auth", JSON.stringify(authData));
+    storage?.setItem("auth", authData ? JSON.stringify(authData) : null);
 }
 
 const getAuth = () => {
@@ -18,7 +18,13 @@ const logout = () => {
 const getUserId = () => {
     const token = sessionStorage.getItem('token');
     const userId = token?.split('|')[0]
-   return userId || 0;
+    return userId || 0;
 }
 
-export { setAuth, getAuth, logout, getUserId };
+const getToken = () => {
+     const token = sessionStorage.getItem('token');
+    const userToken = token?.split('|')[1].trim();
+    return userToken || null;
+}
+
+export { setAuth, getAuth, logout, getUserId, getToken };

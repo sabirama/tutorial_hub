@@ -1,42 +1,138 @@
 import { useState, useEffect } from 'react';
 import "../../../../../assets/css/ParentsProfile.css"
 import apiCall from '../../../../../middlewares/api/axios';
-import { getUserId } from '../../../../../middlewares/auth/auth';
+import { getUserId, getToken } from '../../../../../middlewares/auth/auth';
 
 const ParentProfile = () => {
-  const [parent, setParent] = useState({});
+  const [parent, setParent] = useState({
+    id: 1,
+    full_name: "",
+    contact_number: "",
+    email: "",
+    location: "",
+    facebook: "",
+    username: "",
+    profile_image: "",
+    bio: "",
+    created_at: "",
+    updated_at: ""
+  });
+  
   const [children, setChildren] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState({ ...parent });
   const [editChildren, setEditChildren] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    async function fetchParentData() {
-      try {
-        const response = await apiCall({
-          method: 'get',
-          url: `/parents/${getUserId()}/profile`,
-        });
-        
-        console.log('API Response:', response.data);
-        
-        if (response.data.success) {
-          const profileData = response.data.data;
-          setParent(profileData);
-          setEditForm(profileData);
-          setChildren(profileData.children || []);
-          setEditChildren(profileData.children || []);
-        }
-      } catch (error) {
-        console.error('Error fetching parent profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchParentData();
   }, []);
+
+  const fetchParentData = async () => {
+    try {
+      const response = await apiCall({
+        method: 'get',
+        url: `/parents/${getUserId()}/profile`,
+      });
+      
+      console.log('API Response:', response.data);
+      
+      if (response.data.success) {
+        const profileData = response.data.data;
+        
+        // Set parent data with proper structure
+        const parentData = {
+          id: profileData.id || getUserId(),
+          full_name: profileData.full_name || "",
+          contact_number: profileData.contact_number || "",
+          email: profileData.email || "",
+          location: profileData.location || "",
+          facebook: profileData.facebook || "",
+          username: profileData.username || "",
+          profile_image: profileData.profile_image || "",
+          bio: profileData.bio || "",
+          created_at: profileData.created_at || "",
+          updated_at: profileData.updated_at || ""
+        };
+        
+        setParent(parentData);
+        setEditForm(parentData);
+        setChildren(profileData.children || []);
+        setEditChildren(profileData.children || []);
+      }
+    } catch (error) {
+      console.error('Error fetching parent profile:', error);
+      alert('Failed to load parent profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Create object URL for immediate preview (client-side only)
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Update both parent and editForm states with the object URL
+      setParent(prev => ({ 
+        ...prev, 
+        profile_image: objectUrl 
+      }));
+      setEditForm(prev => ({ 
+        ...prev, 
+        profile_image: objectUrl 
+      }));
+      
+      console.log('Image preview updated with object URL');
+      
+      // Show success message
+      alert('Profile image updated successfully! This is a preview. The image will be saved when you save your profile.');
+      
+    } catch (error) {
+      console.error('Error processing image:', error);
+      alert('Failed to process image. Please try again.');
+    } finally {
+      setUploading(false);
+      // Reset the file input
+      event.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = () => {
+    if (!window.confirm('Are you sure you want to remove your profile image?')) {
+      return;
+    }
+
+    // Revoke object URL to prevent memory leaks
+    if (parent.profile_image && parent.profile_image.startsWith('blob:')) {
+      URL.revokeObjectURL(parent.profile_image);
+    }
+
+    // Update both parent and editForm states
+    setParent(prev => ({ ...prev, profile_image: '' }));
+    setEditForm(prev => ({ ...prev, profile_image: '' }));
+    
+    alert('Profile image removed successfully!');
+  };
 
   const handleEditChange = (field, value) => {
     setEditForm(prev => ({ ...prev, [field]: value }));
@@ -50,24 +146,33 @@ const ParentProfile = () => {
 
   const handleSave = async () => {
     try {
-      // Remove ALL non-parent fields and auto-generated fields
-      const { 
-        children, 
-        recent_sessions, 
-        stats, 
-        created_at, 
-        updated_at, 
-        ...parentData 
-      } = editForm;
-      
+      const parentId = getUserId();
+      const updateData = {
+        full_name: editForm.full_name,
+        contact_number: editForm.contact_number,
+        email: editForm.email,
+        location: editForm.location,
+        facebook: editForm.facebook,
+        bio: editForm.bio
+      };
+
+      // If there's a new image (object URL), we need to handle it differently
+      // For now, we'll just save the text data and note that image needs separate handling
+      if (editForm.profile_image && editForm.profile_image.startsWith('blob:')) {
+        alert('Note: Profile image changes are currently preview only. Image upload functionality will be added soon.');
+      }
+
       const response = await apiCall({
         method: 'put',
-        url: `/parents/${getUserId()}`,
-        data: parentData
+        url: `/parents/${parentId}`,
+        data: updateData,
+        headers: {
+          'token': getToken()
+        }
       });
       
       if (response.data.success) {
-        setParent(response.data.data);
+        setParent(editForm);
         
         // Now update children if they were modified
         await updateChildren();
@@ -157,6 +262,12 @@ const ParentProfile = () => {
   };
 
   const handleCancel = () => {
+    // Revoke any object URLs that were created during editing
+    if (editForm.profile_image && editForm.profile_image.startsWith('blob:') && 
+        editForm.profile_image !== parent.profile_image) {
+      URL.revokeObjectURL(editForm.profile_image);
+    }
+    
     setEditForm(parent);
     setEditChildren(children);
     setIsEditing(false);
@@ -207,14 +318,53 @@ const ParentProfile = () => {
         {/* Left Side - Profile Info */}
         <div className="profile-sidebar">
           <div className="profile-card">
-            <div className="profile-image">
-              {parent.profile_image ? (
-                <img src={parent.profile_image} alt={parent.full_name} />
-              ) : (
-                <div className="avatar-large">
-                  {parent.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
-                </div>
-              )}
+            <div className="profile-image-container">
+              <div className="profile-image">
+                {parent.profile_image ? (
+                  <div className="image-wrapper">
+                    <img 
+                      src={parent.profile_image} 
+                      alt={parent.full_name}
+                      key={parent.profile_image}
+                      onLoad={() => console.log('Image loaded successfully')}
+                      onError={(e) => {
+                        console.error('Image failed to load:', parent.profile_image);
+                        // Fallback to avatar
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    {uploading && <div className="upload-overlay">Uploading...</div>}
+                  </div>
+                ) : (
+                  <div className="avatar-large">
+                    {parent.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                  </div>
+                )}
+              </div>
+              
+              {/* Image Upload Controls */}
+              <div className="image-upload-controls">
+                <label className="upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                    style={{ display: 'none' }}
+                  />
+                  {uploading ? 'Uploading...' : 'Change Photo'}
+                </label>
+                
+                {parent.profile_image && (
+                  <button 
+                    className="remove-btn"
+                    onClick={handleRemoveImage}
+                    disabled={uploading}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="profile-info">
@@ -224,9 +374,10 @@ const ParentProfile = () => {
                   value={editForm.full_name || ''}
                   onChange={(e) => handleEditChange('full_name', e.target.value)}
                   className="edit-input"
+                  placeholder="Full Name"
                 />
               ) : (
-                <h2>{parent.full_name}</h2>
+                <h2>{parent.full_name || "No Name Provided"}</h2>
               )}
               <p className="role">Parent</p>
             </div>
@@ -245,78 +396,6 @@ const ParentProfile = () => {
             ))}
           </div>
 
-          {/* Contact Info */}
-          <div className="contact-card">
-            <h3>Contact Information</h3>
-            {isEditing ? (
-              <>
-                <div className="contact-item">
-                  <span>📧</span>
-                  <input
-                    type="email"
-                    value={editForm.email || ''}
-                    onChange={(e) => handleEditChange('email', e.target.value)}
-                    className="edit-input"
-                  />
-                </div>
-                <div className="contact-item">
-                  <span>📞</span>
-                  <input
-                    type="text"
-                    value={editForm.contact_number || ''}
-                    onChange={(e) => handleEditChange('contact_number', e.target.value)}
-                    className="edit-input"
-                  />
-                </div>
-                <div className="contact-item">
-                  <span>📍</span>
-                  <input
-                    type="text"
-                    value={editForm.location || ''}
-                    onChange={(e) => handleEditChange('location', e.target.value)}
-                    className="edit-input"
-                  />
-                </div>
-                <div className="contact-item">
-                  <span>🔗</span>
-                  <input
-                    type="text"
-                    value={editForm.facebook || ''}
-                    onChange={(e) => handleEditChange('facebook', e.target.value)}
-                    className="edit-input"
-                    placeholder="Facebook username"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="contact-item">
-                  <span>📧</span>
-                  <span>{parent.email}</span>
-                </div>
-                <div className="contact-item">
-                  <span>📞</span>
-                  <span>{parent.contact_number}</span>
-                </div>
-                <div className="contact-item">
-                  <span>📍</span>
-                  <span>{parent.location}</span>
-                </div>
-                {parent.facebook && (
-                  <div className="contact-item">
-                    <span>🔗</span>
-                    <a 
-                      href={`https://facebook.com/${parent.facebook}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      @{parent.facebook}
-                    </a>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         </div>
 
         {/* Right Side - Detailed Info */}
@@ -333,7 +412,7 @@ const ParentProfile = () => {
                 placeholder="Tell us about yourself and your children..."
               />
             ) : (
-              <p>{parent.bio}</p>
+              <p>{parent.bio || "No bio provided yet."}</p>
             )}
           </div>
 
@@ -372,7 +451,6 @@ const ParentProfile = () => {
                       className="edit-input"
                       placeholder="Age"
                     />
-                    {/* FIXED: Always show delete button when editing, even if only 1 child */}
                     <button 
                       className="remove-child-btn"
                       onClick={() => removeChild(index)}
@@ -395,6 +473,82 @@ const ParentProfile = () => {
                 <p className="no-children">No children information added yet.</p>
               )}
             </div>
+          </div>
+
+          {/* Contact Info */}
+          <div className="contact-card">
+            <h3>Contact Information</h3>
+            {isEditing ? (
+              <>
+                <div className="contact-item">
+                  <span>📧</span>
+                  <input
+                    type="email"
+                    value={editForm.email || ''}
+                    onChange={(e) => handleEditChange('email', e.target.value)}
+                    className="edit-input"
+                    placeholder="Email"
+                  />
+                </div>
+                <div className="contact-item">
+                  <span>📞</span>
+                  <input
+                    type="text"
+                    value={editForm.contact_number || ''}
+                    onChange={(e) => handleEditChange('contact_number', e.target.value)}
+                    className="edit-input"
+                    placeholder="Contact Number"
+                  />
+                </div>
+                <div className="contact-item">
+                  <span>📍</span>
+                  <input
+                    type="text"
+                    value={editForm.location || ''}
+                    onChange={(e) => handleEditChange('location', e.target.value)}
+                    className="edit-input"
+                    placeholder="Location"
+                  />
+                </div>
+                <div className="contact-item">
+                  <span>🔗</span>
+                  <input
+                    type="text"
+                    value={editForm.facebook || ''}
+                    onChange={(e) => handleEditChange('facebook', e.target.value)}
+                    className="edit-input"
+                    placeholder="Facebook username"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="contact-item">
+                  <span>📧</span>
+                  <span>{parent.email || "No email provided"}</span>
+                </div>
+                <div className="contact-item">
+                  <span>📞</span>
+                  <span>{parent.contact_number || "No contact number"}</span>
+                </div>
+                <div className="contact-item">
+                  <span>📍</span>
+                  <span>{parent.location || "No location specified"}</span>
+                </div>
+                {parent.facebook && (
+                  <div className="contact-item">
+                    <span>🔗</span>
+                    <a 
+                      href={`https://facebook.com/${parent.facebook}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      @{parent.facebook}
+                    </a>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Edit Actions */}
