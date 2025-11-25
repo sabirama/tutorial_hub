@@ -5,7 +5,7 @@ const parent_tutors = {
     parent_id: 'INT NOT NULL',
     tutor_id: 'INT NOT NULL',
     subject_id: 'INT NOT NULL',
-    status: "ENUM('active', 'inactive') DEFAULT 'active'",
+    status: "VARCHAR(50) DEFAULT 'active'",
     ...TIMESTAMP
   }
 

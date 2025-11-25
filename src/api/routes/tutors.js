@@ -1,5 +1,6 @@
 import express from 'express';
 import { tutorsController } from '../../controllers/tutors_controller.js';
+import { parentTutorsController } from '../../controllers/parent_tutors_controller.js';
 import { requireToken } from '../../middleware/auth.js';
 const router = express.Router();
 
@@ -24,5 +25,8 @@ router.delete('/:id', requireToken, tutorsController.deleteTutor);
 router.get('/:id/availability', requireToken, tutorsController.getTutorAvailability);
 router.get('/:id/sessions', requireToken, tutorsController.getTutorSessions);
 router.get('/:id/session-requests', requireToken, tutorsController.getTutorSessionRequests);
+
+// Parents
+router.get('/:id/parents', requireToken, parentTutorsController.getParentsByTutor);
 
 export default router;

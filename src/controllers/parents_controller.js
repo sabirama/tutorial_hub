@@ -235,7 +235,7 @@ export class ParentsController {
                 });
             }
 
-            // Find parent by email
+            // Find parent by username
             const parents = await query({
                 action: 'read',
                 table: 'parents',

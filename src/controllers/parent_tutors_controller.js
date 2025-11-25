@@ -267,6 +267,7 @@ export class ParentTutorsController {
     // PUT /api/parent-tutors/:id/status - Update parent-tutor relationship status
     async updateParentTutorStatus(req, res) {
         try {
+            console.log(req.params.id);
             const { id } = req.params;
             const { status } = req.body;
 
@@ -433,7 +434,7 @@ export class ParentTutorsController {
     // GET /api/parent-tutors/tutor/:tutor_id - Get all parents for a tutor
     async getParentsByTutor(req, res) {
         try {
-            const { tutor_id } = req.params;
+            const tutor_id  = req.params.id;
             const { status = 'active' } = req.query;
 
             const parentTutors = await query({
@@ -456,7 +457,7 @@ export class ParentTutorsController {
                     // Get subject data
                     const [subjectData] = await query({
                         action: 'read',
-                        table: 'subjects',
+                        table: 'subject',
                         where: { id: parentTutor.subject_id }
                     });
 
@@ -471,7 +472,6 @@ export class ParentTutorsController {
                     };
                 })
             );
-
             res.json({
                 success: true,
                 data: parentsWithDetails,
