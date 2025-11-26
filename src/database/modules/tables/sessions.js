@@ -9,7 +9,7 @@ const sessions = {
     subject_id: 'INT NOT NULL',
     date: 'DATE',
     time: 'VARCHAR(50)',
-    status: 'VARCHAR(50) DEFAULT "pending"',
+    status: "VARCHAR(50) DEFAULT 'pending'",
     hourly_rate: 'VARCHAR(50)',
     duration: 'VARCHAR(50)',
     location: 'VARCHAR(100)',
