@@ -11,7 +11,7 @@ const parents = {
   password: 'VARCHAR(255) NOT NULL',
   profile_image: 'VARCHAR(500)',
   bio: 'TEXT',
-  status: 'VARCHAR(50) DEFAULT "active"',
+  status: "VARCHAR(50) DEFAULT 'active'",
   verified: "BOOLEAN DEFAULT FALSE",
   ...TIMESTAMP
 }
