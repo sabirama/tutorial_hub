@@ -63,7 +63,7 @@ const Register = () => {
             })
             if (response.data.data) {
                 sessionStorage.setItem('token', response.data.data.token)
-                navigate("/tutor/dashboard")
+                navigate("/tutor")
             }
         } catch (e) {
             alert(e.message)

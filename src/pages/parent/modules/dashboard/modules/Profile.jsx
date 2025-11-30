@@ -517,7 +517,7 @@ const ParentProfile = () => {
                     value={editForm.facebook || ''}
                     onChange={(e) => handleEditChange('facebook', e.target.value)}
                     className="edit-input"
-                    placeholder="Facebook username"
+                    placeholder="Facebook Link"
                   />
                 </div>
               </>

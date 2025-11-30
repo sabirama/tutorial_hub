@@ -4,68 +4,139 @@ import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
 import apiCall from '../../../../../middlewares/api/axios';
 
 const TutorParents = () => {
-  const [activeTab, setActiveTab] = useState('parents');
+  const [activeTab, setActiveTab] = useState('current');
   const [ratingModal, setRatingModal] = useState({ isOpen: false, parent: null });
+  const [sessionModal, setSessionModal] = useState({ isOpen: false, parent: null });
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingForm, setRatingForm] = useState({
     rating: 0,
     review: '',
-    wouldRecommend: true
+    would_recommend: true
   });
 
-  async function getParents() {
-    try {
-      const response = await apiCall({
-        method: 'get',
-        url: `/tutors/${getUserId()}/parents`,
-        headers: {
-          'token': getToken()
-        }
-      });
-      
-      if (response.data.success) {
-        // Transform API data to match component structure
-        const transformedParents = response.data.data.map(parent => ({
-          id: parent.id,
-          name: parent.parent_name,
-          email: parent.parent_email,
-          contact: parent.parent_contact,
-          location: parent.parent_location,
-          joinDate: parent.created_at,
-          totalSessions: 0, // You might need to fetch this separately
-          children: [
-            {
-              id: parent.id, // Using parent_tutor id as temporary child id
-              name: 'Student Name', // You'll need to fetch actual children data
-              grade: 'Grade', // You'll need to fetch actual children data
-              age: 'Age', // You'll need to fetch actual children data
-              sessions: 0 // You'll need to fetch actual session count
-            }
-          ],
-          rating: parent.rating,
-          review: parent.review,
-          lastSession: parent.last_session_date,
-          subject_name: parent.subject_name,
-          subject_description: parent.subject_description
-        }));
-        
-        setParents(transformedParents);
-      }
-    } catch (error) {
-      console.error('Error fetching parents:', error);
-      setParents([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [sessionForm, setSessionForm] = useState({
+    childId: '',
+    subjectId: '',
+    preferredDate: '',
+    preferredTime: '',
+    message: ''
+  });
 
-  const handleRateParent = async (parent) => {
+  const [children, setChildren] = useState([]);
+  const [tutorSubjects, setTutorSubjects] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function fetchParents() {
+      try {
+        const response = await apiCall({
+          method: 'get',
+          url: `/tutors/${getUserId()}/parents`,
+          headers: {
+            token: getToken()
+          }
+        });
+        
+        if (response.data.success) {
+          const transformedParents = response.data.data.map(parent => ({
+            id: parent.id,
+            parent_id: parent.parent_id,
+            name: parent.parent_name || 'Parent',
+            email: parent.parent_email || 'No email',
+            contact: parent.parent_contact || 'No contact provided',
+            location: parent.parent_location || 'Location not specified',
+            status: parent.status || 'active',
+            joinDate: parent.created_at,
+            totalSessions: parent.total_sessions || parent.session_count || 0,
+            children: parent.children || [],
+            my_rating: parent.rating,
+            my_review: parent.review,
+            lastSession: parent.last_session_date,
+            subject_name: parent.subject_name,
+            subject_description: parent.subject_description,
+            hourly_rate: parent.hourly_rate || '0'
+          }));
+          
+          setParents(transformedParents);
+        }
+      } catch (error) {
+        console.error('Error fetching parents:', error);
+        setParents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchParents();
+  }, []);
+
+  const filteredParents = parents.filter(parent => {
+    if (!parent) return false;
+    if (activeTab === 'current') return parent.status === 'active';
+    if (activeTab === 'past') return parent.status === 'inactive';
+    return true;
+  });
+
+  const handleRateParent = (parent) => {
     setRatingModal({ isOpen: true, parent });
     setRatingForm({
-      rating: parent.rating || 0,
-      review: parent.review || '',
-      wouldRecommend: true
+      rating: parent.my_rating || 0,
+      review: parent.my_review || '',
+      would_recommend: parent.would_recommend !== false
+    });
+  };
+
+  const handleScheduleSession = async (parent) => {
+    setSessionModal({ isOpen: true, parent });
+
+    // Fetch children and subjects when modal opens
+    try {
+      const tutorId = getUserId();
+
+      // Fetch children for this parent
+      let childrenData = [];
+      try {
+        const childrenResponse = await apiCall({
+          method: 'get',
+          url: `/parents/${parent.parent_id}/children`,
+          headers: {
+            token: getToken()
+          }
+        });
+        childrenData = childrenResponse.data?.data || childrenResponse.data || [];
+      } catch (error) {
+        console.log('Could not fetch children:', error);
+      }
+      setChildren(childrenData);
+
+      // Fetch tutor's offered subjects
+      let tutorSubjectsData = [];
+      try {
+        const tutorSubjectsResponse = await apiCall({
+          method: 'get',
+          url: `/sessions/tutor-subjects/${tutorId}`,
+          headers: {
+            token: getToken()
+          }
+        });
+        tutorSubjectsData = tutorSubjectsResponse.data?.data || tutorSubjectsResponse.data || [];
+      } catch (error) {
+        console.log('Could not fetch tutor subjects:', error);
+      }
+      setTutorSubjects(tutorSubjectsData);
+
+    } catch (error) {
+      console.error('Error fetching modal data:', error);
+    }
+
+    // Set initial form values
+    setSessionForm({
+      childId: '',
+      subjectId: '',
+      preferredDate: '',
+      preferredTime: '',
+      message: `Hi ${parent.name}, I'd like to schedule another tutoring session.`
     });
   };
 
@@ -73,32 +144,91 @@ const TutorParents = () => {
     e.preventDefault();
 
     try {
-      // Update parent rating via API
-      await apiCall({
-        method: 'put',
-        url: `/parent-tutors/${ratingModal.parent.id}`,
+      const response = await apiCall({
+        method: 'post',
+        url: '/parent-ratings',
         data: {
+          tutor_id: getUserId(),
+          parent_id: ratingModal.parent.parent_id,
           rating: ratingForm.rating,
-          review: ratingForm.review
+          review: ratingForm.review,
         },
         headers: {
-          'token': getToken()
+          token: getToken()
         }
       });
 
-      // Update local state
-      setParents(prev => prev.map(parent =>
-        parent.id === ratingModal.parent.id
-          ? { ...parent, rating: ratingForm.rating, review: ratingForm.review }
-          : parent
-      ));
+      if (response.data.success) {
+        // Update local state
+        setParents(prev => prev.map(parent =>
+          parent.parent_id === ratingModal.parent.parent_id
+            ? {
+                ...parent,
+                my_rating: ratingForm.rating,
+                my_review: ratingForm.review,
+              }
+            : parent
+        ));
 
-      setRatingModal({ isOpen: false, parent: null });
-      setRatingForm({ rating: 0, review: '', wouldRecommend: true });
-      alert('Rating submitted successfully!');
+        setRatingModal({ isOpen: false, parent: null });
+        setRatingForm({ rating: 0, review: '', would_recommend: true });
+        alert('Rating submitted successfully!');
+      } else {
+        alert('Failed to submit rating: ' + (response.data.error || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Error submitting rating:', error);
-      alert('Failed to submit rating. Please try again.');
+      alert('Failed to submit rating: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleSubmitSessionRequest = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const sessionData = {
+        parent_id: sessionModal.parent.parent_id,
+        tutor_id: getUserId(),
+        child_id: sessionForm.childId || 1,
+        subject_id: sessionForm.subjectId || 1,
+        date: sessionForm.preferredDate,
+        time: sessionForm.preferredTime,
+        status: 'pending',
+        location: 'Online',
+        notes: sessionForm.message,
+        hourly_rate: sessionModal.parent?.hourly_rate ? `${sessionModal.parent.hourly_rate}` : '0',
+        duration: '1 hour'
+      };
+
+      const response = await apiCall({
+        method: 'post',
+        url: '/sessions',
+        data: sessionData,
+        headers: {
+          token: getToken()
+        }
+      });
+
+      if (response.data.success) {
+        const parentName = sessionModal.parent?.name;
+        alert(`Session request sent to ${parentName}! They will confirm soon.`);
+        setSessionModal({ isOpen: false, parent: null });
+        setSessionForm({
+          childId: '',
+          subjectId: '',
+          preferredDate: '',
+          preferredTime: '',
+          message: ''
+        });
+      } else {
+        alert('Failed to send session request: ' + (response.data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error creating session:', error);
+      alert('Failed to send session request: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -107,31 +237,39 @@ const TutorParents = () => {
   };
 
   const renderStars = (rating, interactive = false, onStarClick = null) => {
+    const numericRating = parseFloat(rating) || 0;
     return (
       <div className="stars">
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}
-            className={`star ${star <= rating ? 'filled' : ''} ${interactive ? 'interactive' : ''}`}
+            className={`star ${star <= numericRating ? 'filled' : ''} ${interactive ? 'interactive' : ''}`}
             onClick={interactive ? () => onStarClick(star) : null}
           >
-            {star <= rating ? '★' : '☆'}
+            {star <= numericRating ? '★' : '☆'}
           </span>
         ))}
       </div>
     );
   };
 
-  const getRatingColor = (rating) => {
-    if (rating >= 4.5) return '#10b759';
-    if (rating >= 4.0) return '#f59e0b';
-    if (rating >= 3.0) return '#f97316';
-    return '#ef4444';
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return '#10b759';
+      case 'inactive': return '#6c757d';
+      case 'pending': return '#f59e0b';
+      default: return '#6c757d';
+    }
   };
 
-  useEffect(() => {
-    getParents();
-  }, []);
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'active': return 'Currently Tutoring';
+      case 'inactive': return 'Past Parent';
+      case 'pending': return 'Session Requested';
+      default: return status;
+    }
+  };
 
   if (loading) {
     return (
@@ -154,159 +292,133 @@ const TutorParents = () => {
       {/* Tabs */}
       <div className="tabs">
         <button
-          className={`tab ${activeTab === 'parents' ? 'active' : ''}`}
-          onClick={() => setActiveTab('parents')}
+          className={`tab ${activeTab === 'current' ? 'active' : ''}`}
+          onClick={() => setActiveTab('current')}
         >
-          Parents ({parents.length})
+          Current Parents ({parents.filter(p => p?.status === 'active').length})
         </button>
         <button
-          className={`tab ${activeTab === 'students' ? 'active' : ''}`}
-          onClick={() => setActiveTab('students')}
+          className={`tab ${activeTab === 'past' ? 'active' : ''}`}
+          onClick={() => setActiveTab('past')}
         >
-          All Students ({parents.reduce((total, parent) => total + parent.children.length, 0)})
+          Past Parents ({parents.filter(p => p?.status === 'inactive').length})
+        </button>
+        <button
+          className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+          onClick={() => setActiveTab('all')}
+        >
+          All Parents ({parents.length})
         </button>
       </div>
 
-      {/* Parents Tab */}
-      {activeTab === 'parents' && (
-        <div className="parents-grid">
-          {parents.length === 0 ? (
-            <div className="no-parents">
-              <p>No parents found. You'll see parents here once they book sessions with you.</p>
-            </div>
-          ) : (
-            parents.map(parent => (
-              <div key={parent.id} className="parent-card">
-                <div className="parent-header">
-                  <div className="parent-info">
-                    <div className="avatar">
-                      {parent.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <h3>{parent.name}</h3>
-                      <p>{parent.location || 'No location specified'}</p>
-                    </div>
+      {/* Parents Grid */}
+      <div className="parents-grid">
+        {filteredParents.length === 0 ? (
+          <div className="no-parents">
+            <p>No parents found matching the selected filter.</p>
+          </div>
+        ) : (
+          filteredParents.map(parent => (
+            <div key={parent.id} className="parent-card">
+              <div className="parent-header">
+                <div className="parent-info">
+                  <div className="avatar">
+                    {parent.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <div className="parent-stats">
-                    <span className="sessions-count">{parent.totalSessions} sessions</span>
-                    {parent.rating && (
-                      <span
-                        className="rating-badge"
-                        style={{ backgroundColor: getRatingColor(parent.rating) }}
-                      >
-                        ⭐ {parent.rating}
-                      </span>
-                    )}
+                  <div>
+                    <h3>{parent.name}</h3>
+                    <p>{parent.location}</p>
                   </div>
                 </div>
-
-                <div className="contact-info">
-                  <div className="contact-item">
-                    <span>📧</span>
-                    <span>{parent.email}</span>
-                  </div>
-                  <div className="contact-item">
-                    <span>📞</span>
-                    <span>{parent.contact || 'No contact provided'}</span>
-                  </div>
-                  <div className="contact-item">
-                    <span>📅</span>
-                    <span>Joined {new Date(parent.joinDate).toLocaleDateString()}</span>
-                  </div>
-                  {parent.subject_name && (
-                    <div className="contact-item">
-                      <span>📚</span>
-                      <span>{parent.subject_name}</span>
-                    </div>
-                  )}
+                <div className="parent-stats">
+                  <span
+                    className="status-badge"
+                    style={{ backgroundColor: getStatusColor(parent.status) }}
+                  >
+                    {getStatusText(parent.status)}
+                  </span>
+                  <span className="sessions-count">{parent.totalSessions} sessions</span>
                 </div>
+              </div>
 
+              <div className="parent-details">
+                <div className="detail-item">
+                  <span className="label">Subject:</span>
+                  <span className="value">{parent.subject_name || 'Not specified'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="label">Hourly Rate:</span>
+                  <span className="value">${parent.hourly_rate || '0'}/hour</span>
+                </div>
+                <div className="detail-item">
+                  <span className="label">Relationship Created:</span>
+                  <span className="value">{new Date(parent.joinDate).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              <div className="contact-info">
+                <div className="contact-item">
+                  <span>📧</span>
+                  <span>{parent.email}</span>
+                </div>
+                <div className="contact-item">
+                  <span>📞</span>
+                  <span>{parent.contact}</span>
+                </div>
+              </div>
+
+              {parent.children && parent.children.length > 0 && (
                 <div className="children-section">
-                  <h4>Children:</h4>
+                  <h4>Students ({parent.children.length}):</h4>
                   <div className="children-list">
                     {parent.children.map(child => (
                       <div key={child.id} className="child-tag">
-                        {child.name} ({child.grade})
+                        <strong>{child.name}</strong> - {child.grade || 'Not specified'}
+                        {child.sessions > 0 && <span className="child-sessions"> ({child.sessions} sessions)</span>}
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {parent.review && (
-                  <div className="review-section">
-                    <h4>Your Review:</h4>
-                    <div className="review-content">
-                      {renderStars(parent.rating)}
-                      <p>{parent.review}</p>
-                    </div>
+              {parent.my_review && (
+                <div className="my-review-section">
+                  <h4>Your Review:</h4>
+                  <div className="review-content">
+                    {renderStars(parent.my_rating)}
+                    <p>{parent.my_review}</p>
+                    {parent.would_recommend && (
+                      <div className="recommendation-badge">
+                        ✅ Would recommend
+                      </div>
+                    )}
                   </div>
-                )}
-
-                <div className="card-actions">
-                  <button
-                    className="rate-btn"
-                    onClick={() => handleRateParent(parent)}
-                  >
-                    {parent.rating ? 'Update Rating' : 'Rate Parent'}
-                  </button>
-                  <button className="message-btn">
-                    Send Message
-                  </button>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+              )}
 
-      {/* Students Tab */}
-      {activeTab === 'students' && (
-        <div className="students-table">
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th>Grade</th>
-                  <th>Age</th>
-                  <th>Parent</th>
-                  <th>Sessions</th>
-                  <th>Last Session</th>
-                </tr>
-              </thead>
-              <tbody>
-                {parents.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="no-data">
-                      No students found
-                    </td>
-                  </tr>
-                ) : (
-                  parents.flatMap(parent =>
-                    parent.children.map(child => (
-                      <tr key={child.id}>
-                        <td className="student-name">
-                          <div className="name-avatar">
-                            <div className="avatar-sm">
-                              {child.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            {child.name}
-                          </div>
-                        </td>
-                        <td>{child.grade}</td>
-                        <td>{child.age} years</td>
-                        <td className="parent-name">{parent.name}</td>
-                        <td>{child.sessions}</td>
-                        <td>{parent.lastSession ? new Date(parent.lastSession).toLocaleDateString() : 'No sessions yet'}</td>
-                      </tr>
-                    ))
-                  )
+              <div className="card-actions">
+                <button
+                  className="rate-btn"
+                  onClick={() => handleRateParent(parent)}
+                >
+                  {parent.my_rating ? 'Update Rating' : 'Rate Parent'}
+                </button>
+                <button className="message-btn">
+                  Message
+                </button>
+                {parent.status === 'active' && (
+                  <button 
+                    className="schedule-btn"
+                    onClick={() => handleScheduleSession(parent)}
+                  >
+                    Schedule Session
+                  </button>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
       {/* Rating Modal */}
       {ratingModal.isOpen && (
@@ -322,14 +434,35 @@ const TutorParents = () => {
               </button>
             </div>
 
+            <div className="parent-preview">
+              <div className="avatar">
+                {ratingModal.parent?.name?.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div>
+                <h4>{ratingModal.parent?.name}</h4>
+                <p>{ratingModal.parent?.subject_name}</p>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmitRating}>
               <div className="rating-section">
-                <label>Overall Rating</label>
+                <label>Overall Rating *</label>
                 <div className="interactive-stars">
                   {renderStars(ratingForm.rating, true, handleRatingChange)}
                   <span className="rating-text">
                     {ratingForm.rating === 0 ? 'Select rating' : `${ratingForm.rating}/5 stars`}
                   </span>
+                </div>
+              </div>
+
+              <div className="rating-criteria">
+                <h5>Rate on:</h5>
+                <div className="criteria-list">
+                  <span>📞 Communication</span>
+                  <span>⏰ Punctuality</span>
+                  <span>🤝 Cooperation</span>
+                  <span>💳 Payment</span>
+                  <span>📈 Progress</span>
                 </div>
               </div>
 
@@ -339,7 +472,7 @@ const TutorParents = () => {
                   id="review"
                   value={ratingForm.review}
                   onChange={(e) => setRatingForm(prev => ({ ...prev, review: e.target.value }))}
-                  placeholder="Share your experience working with this parent. Be specific about communication, punctuality, cooperation, etc."
+                  placeholder="Share your experience working with this parent. Consider their communication style, punctuality for sessions, cooperation with learning goals, payment reliability, and their child's progress..."
                   rows="5"
                 />
               </div>
@@ -348,10 +481,10 @@ const TutorParents = () => {
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
-                    checked={ratingForm.wouldRecommend}
-                    onChange={(e) => setRatingForm(prev => ({ ...prev, wouldRecommend: e.target.checked }))}
+                    checked={ratingForm.would_recommend}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, would_recommend: e.target.checked }))}
                   />
-                  <span>I would recommend this parent to other tutors</span>
+                  <span>I would recommend working with this parent</span>
                 </label>
               </div>
 
@@ -368,7 +501,137 @@ const TutorParents = () => {
                   className="submit-btn"
                   disabled={ratingForm.rating === 0}
                 >
-                  Submit Rating
+                  {ratingModal.parent?.my_rating ? 'Update Rating' : 'Submit Rating'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Session Request Modal */}
+      {sessionModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="contact-modal">
+            <div className="modal-header">
+              <h2>Schedule Session with {sessionModal.parent?.name}</h2>
+              <button
+                className="close-btn"
+                onClick={() => setSessionModal({ isOpen: false, parent: null })}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="parent-preview">
+              <div className="avatar">
+                {sessionModal.parent?.name?.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div>
+                <h4>{sessionModal.parent?.name}</h4>
+                <p>{sessionModal.parent?.subject_name}</p>
+                <div className="parent-sessions">
+                  <span>{sessionModal.parent?.totalSessions || 0} sessions completed</span>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitSessionRequest}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label htmlFor="childId">Select Student</label>
+                  <select
+                    id="childId"
+                    value={sessionForm.childId}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, childId: e.target.value }))}
+                  >
+                    <option value="">Select a student</option>
+                    {children.map(child => (
+                      <option key={child.id} value={child.id}>
+                        {child.name} {child.grade ? `- Grade ${child.grade}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {children.length === 0 && (
+                    <p className="form-help">No students found for this parent.</p>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="subject">Subject</label>
+                  <select
+                    id="subject"
+                    value={sessionForm.subjectId}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, subjectId: e.target.value }))}
+                  >
+                    <option value="">Select a subject</option>
+                    {tutorSubjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.subject}
+                      </option>
+                    ))}
+                  </select>
+                  {tutorSubjects.length === 0 && (
+                    <p className="form-help">No subjects available.</p>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="preferredDate">Preferred Date *</label>
+                  <input
+                    type="date"
+                    id="preferredDate"
+                    value={sessionForm.preferredDate}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, preferredDate: e.target.value }))}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="preferredTime">Preferred Time *</label>
+                  <select
+                    id="preferredTime"
+                    value={sessionForm.preferredTime}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, preferredTime: e.target.value }))}
+                    required
+                  >
+                    <option value="">Select a time</option>
+                    <option value="08:00">8:00 AM</option>
+                    <option value="10:00">10:00 AM</option>
+                    <option value="14:00">2:00 PM</option>
+                    <option value="16:00">4:00 PM</option>
+                    <option value="18:00">6:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="message">Additional Message *</label>
+                <textarea
+                  id="message"
+                  value={sessionForm.message}
+                  onChange={(e) => setSessionForm(prev => ({ ...prev, message: e.target.value }))}
+                  rows="4"
+                  placeholder="Provide details about the session topic, learning objectives, and any specific requirements..."
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => setSessionModal({ isOpen: false, parent: null })}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="submit-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Sending...' : 'Send Session Request'}
                 </button>
               </div>
             </form>

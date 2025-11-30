@@ -35,7 +35,7 @@ const Register = () => {
             })
             if (response.data.data) {
                 sessionStorage.setItem('token', response.data.data.token);
-                navigate("/parent/dashboard");
+                navigate("/parent");
             }
         } catch (e) {
             alert(e.message);

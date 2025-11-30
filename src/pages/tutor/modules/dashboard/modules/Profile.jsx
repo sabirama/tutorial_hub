@@ -38,14 +38,23 @@ const TutorProfile = () => {
   const fetchTutorProfile = async () => {
     try {
       const tutorId = getUserId();
-      const response = await apiCall({
+      const token = getToken();
+      
+      console.log('Fetching tutor profile for ID:', tutorId);
+      
+      // Fetch complete tutor profile with all related data
+      const profileResponse = await apiCall({
         method: 'get',
-        url: `/tutors/${tutorId}`,
+        url: `/tutors/${tutorId}/profile`,
+        headers: { token }
       });
       
-      if (response.data.data) {
-        const tutorData = response.data.data;
-        setTutor({
+      console.log('Tutor profile response:', profileResponse);
+      
+      if (profileResponse.data.success && profileResponse.data.data) {
+        const tutorData = profileResponse.data.data;
+        
+        const formattedTutor = {
           id: tutorData.id || tutorId,
           full_name: tutorData.full_name || "",
           contact_number: tutorData.contact_number || "",
@@ -56,41 +65,27 @@ const TutorProfile = () => {
           username: tutorData.username || "",
           profile_image: tutorData.profile_image || "",
           bio: tutorData.bio || "",
-          hourly_rate: tutorData.hourly_rate || "0Php",
-          experience: tutorData.experience || "0 years",
+          hourly_rate: tutorData.hourly_rate || "0 Php",
+          experience: tutorData.experience || "",
           education: tutorData.education || "",
-          subjects_offered: tutorData.subjects_offered || [],
+          subjects_offered: tutorData.subjects || [],
           rating: tutorData.rating || 0,
           total_sessions: tutorData.stats?.total_sessions || 0,
           availability: tutorData.availability || [],
           languages: tutorData.languages || ["English"],
           join_date: tutorData.created_at || new Date().toISOString()
-        });
-        setEditForm({
-          id: tutorData.id || tutorId,
-          full_name: tutorData.full_name || "",
-          contact_number: tutorData.contact_number || "",
-          email: tutorData.email || "",
-          course: tutorData.course || "",
-          location: tutorData.location || "",
-          facebook: tutorData.facebook || "",
-          username: tutorData.username || "",
-          profile_image: tutorData.profile_image || "",
-          bio: tutorData.bio || "",
-          hourly_rate: tutorData.hourly_rate || "$0",
-          experience: tutorData.experience || "0 years",
-          education: tutorData.education || "",
-          subjects_offered: tutorData.subjects_offered || [],
-          rating: tutorData.rating || 0,
-          total_sessions: tutorData.stats?.total_sessions || 0,
-          availability: tutorData.availability || [],
-          languages: tutorData.languages || ["English"],
-          join_date: tutorData.created_at || new Date().toISOString()
-        });
+        };
+        
+        setTutor(formattedTutor);
+        setEditForm(formattedTutor);
+      } else {
+        console.error('No tutor data found in response');
+        alert('Failed to load tutor profile: No data received');
       }
     } catch (error) {
       console.error('Error fetching tutor profile:', error);
-      alert('Failed to load tutor profile');
+      console.error('Error details:', error.response?.data);
+      alert('Failed to load tutor profile: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -104,14 +99,12 @@ const TutorProfile = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB');
       return;
@@ -120,30 +113,15 @@ const TutorProfile = () => {
     setUploading(true);
 
     try {
-      // Create object URL for immediate preview (client-side only)
       const objectUrl = URL.createObjectURL(file);
-      
-      // Update both tutor and editForm states with the object URL
-      setTutor(prev => ({ 
-        ...prev, 
-        profile_image: objectUrl 
-      }));
-      setEditForm(prev => ({ 
-        ...prev, 
-        profile_image: objectUrl 
-      }));
-      
-      console.log('Image preview updated with object URL');
-      
-      // Show success message
-      alert('Profile image updated successfully! This is a preview. The image will be saved when you save your profile.');
-      
+      setTutor(prev => ({ ...prev, profile_image: objectUrl }));
+      setEditForm(prev => ({ ...prev, profile_image: objectUrl }));
+      alert('Profile image updated successfully! This is a preview.');
     } catch (error) {
       console.error('Error processing image:', error);
       alert('Failed to process image. Please try again.');
     } finally {
       setUploading(false);
-      // Reset the file input
       event.target.value = '';
     }
   };
@@ -153,62 +131,76 @@ const TutorProfile = () => {
       return;
     }
 
-    // Revoke object URL to prevent memory leaks
     if (tutor.profile_image && tutor.profile_image.startsWith('blob:')) {
       URL.revokeObjectURL(tutor.profile_image);
     }
 
-    // Update both tutor and editForm states
     setTutor(prev => ({ ...prev, profile_image: '' }));
     setEditForm(prev => ({ ...prev, profile_image: '' }));
-    
     alert('Profile image removed successfully!');
   };
 
-  const handleSave = async () => {
+// In your handleSave function, add validation:
+const handleSave = async () => {
     try {
       const tutorId = getUserId();
+      const token = getToken();
+      
+      // Only include fields that exist and have values
       const updateData = {
-        full_name: editForm.full_name,
-        contact_number: editForm.contact_number,
-        email: editForm.email,
-        course: editForm.course,
-        location: editForm.location,
-        facebook: editForm.facebook,
-        bio: editForm.bio,
-        hourly_rate: editForm.hourly_rate,
-        experience: editForm.experience,
-        education: editForm.education
+        full_name: editForm.full_name || '',
+        contact_number: editForm.contact_number || '',
+        email: editForm.email || '',
+        course: editForm.course || '',
+        location: editForm.location || '',
+        facebook: editForm.facebook || '',
+        bio: editForm.bio || '',
+        hourly_rate: editForm.hourly_rate || '',
+        experience: editForm.experience || '',
+        education: editForm.education || ''
       };
 
-      // If there's a new image (object URL), we need to handle it differently
-      // For now, we'll just save the text data and note that image needs separate handling
-      if (editForm.profile_image && editForm.profile_image.startsWith('blob:')) {
-        alert('Note: Profile image changes are currently preview only. Image upload functionality will be added soon.');
-      }
+      console.log('Updating tutor with data:', updateData);
+
+      // Remove empty fields to avoid unnecessary updates
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === '') {
+          delete updateData[key];
+        }
+      });
 
       const response = await apiCall({
         method: 'put',
         url: `/tutors/${tutorId}`,
         data: updateData,
-        headers: {
-          'token': getToken()
-        }
+        headers: { 'token': token }
       });
 
+      console.log('Update response:', response);
+
       if (response.data.success) {
-        setTutor(editForm);
+        // Update the tutor state with the new data
+        setTutor(prev => ({
+          ...prev,
+          ...updateData
+        }));
+        
         setIsEditing(false);
         alert('Profile updated successfully!');
+        
+        // Refresh the profile to get any server-side updates
+        fetchTutorProfile();
+      } else {
+        alert('Failed to update profile: ' + (response.data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error updating tutor profile:', error);
-      alert('Failed to update profile');
+      console.error('Error details:', error.response?.data);
+      alert('Failed to update profile: ' + (error.response?.data?.error || error.message));
     }
-  };
+};
 
   const handleCancel = () => {
-    // Revoke any object URLs that were created during editing
     if (editForm.profile_image && editForm.profile_image.startsWith('blob:') && 
         editForm.profile_image !== tutor.profile_image) {
       URL.revokeObjectURL(editForm.profile_image);
@@ -259,11 +251,9 @@ const TutorProfile = () => {
                     <img 
                       src={tutor.profile_image} 
                       alt={tutor.full_name}
-                      key={tutor.profile_image} // Force re-render on URL change
-                      onLoad={() => console.log('Image loaded successfully')}
+                      key={tutor.profile_image}
                       onError={(e) => {
-                        console.error('Image failed to load:', tutor.profile_image);
-                        // Fallback to avatar
+                        console.error('Image failed to load');
                         e.target.style.display = 'none';
                       }}
                     />
@@ -276,7 +266,6 @@ const TutorProfile = () => {
                 )}
               </div>
               
-              {/* Image Upload Controls */}
               <div className="image-upload-controls">
                 <label className="upload-btn">
                   <input
@@ -514,9 +503,9 @@ const TutorProfile = () => {
               <h4>Availability</h4>
               <div className="availability-list">
                 {tutor.availability && tutor.availability.length > 0 ? (
-                  tutor.availability.map((day, index) => (
+                  tutor.availability.map((schedule, index) => (
                     <span key={index} className="availability-tag">
-                      {day}
+                      {schedule}
                     </span>
                   ))
                 ) : (

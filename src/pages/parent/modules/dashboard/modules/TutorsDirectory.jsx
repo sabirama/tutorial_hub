@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import "../../../../../assets/css/TutorsDirectory.css"
 import apiCall from '../../../../../middlewares/api/axios';
-import { getUserId } from '../../../../../middlewares/auth/auth';
+import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
 
 const TutorsDirectory = () => {
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [children, setChildren] = useState([]);
+  const [tutorSubjects, setTutorSubjects] = useState([]); // Changed to tutorSubjects
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function fetchTutors() {
@@ -37,9 +40,7 @@ const TutorsDirectory = () => {
 
   const [contactModal, setContactModal] = useState({ isOpen: false, tutor: null });
   const [contactForm, setContactForm] = useState({
-    childName: '',
     childId: '',
-    subject: '',
     subjectId: '',
     preferredDate: '',
     preferredTime: '',
@@ -83,12 +84,50 @@ const TutorsDirectory = () => {
     tutors.map(tutor => tutor.location).filter(Boolean)
   )].sort();
 
-  const handleContactTutor = (tutor) => {
+  const handleContactTutor = async (tutor) => {
     setContactModal({ isOpen: true, tutor });
+
+    // Fetch children and tutor's offered subjects when modal opens
+    try {
+      const userId = getUserId();
+
+      // Try to fetch children
+      let childrenData = [];
+      try {
+        const childrenResponse = await apiCall({
+          method: 'get',
+          url: `/parents/${userId}/children`,
+        });
+        childrenData = childrenResponse.data?.data || childrenResponse.data || [];
+      } catch (error) {
+        console.log('Could not fetch children:', error);
+      }
+      setChildren(childrenData);
+
+      // Fetch tutor's offered subjects from sessions API
+      let tutorSubjectsData = [];
+      try {
+        const tutorSubjectsResponse = await apiCall({
+          method: 'get',
+          url: `/sessions/tutor-subjects/${tutor.id}`,
+          headers: {
+            token: getToken()
+          }
+        });
+        tutorSubjectsData = tutorSubjectsResponse.data?.data || tutorSubjectsResponse.data || [];
+        console.log('Fetched tutor subjects:', tutorSubjectsData);
+      } catch (error) {
+        console.log('Could not fetch tutor subjects:', error);
+      }
+      setTutorSubjects(tutorSubjectsData);
+
+    } catch (error) {
+      console.error('Error fetching modal data:', error);
+    }
+
+    // Set initial form values
     setContactForm({
-      childName: '',
       childId: '',
-      subject: tutor.subjects?.[0] || '',
       subjectId: '',
       preferredDate: '',
       preferredTime: '',
@@ -98,24 +137,22 @@ const TutorsDirectory = () => {
 
   const handleSubmitContact = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
-      const tutorName = contactModal.tutor?.tutor_name || contactModal.tutor?.full_name;
-      
-      // Create session with pending status
+      // Create session with pending status - using the correct table structure
       const sessionData = {
         parent_id: getUserId(),
         tutor_id: contactModal.tutor.id,
-        subject_id: contactForm.subjectId || 1, // You'll need to get the actual subject ID
-        child_id: contactForm.childId || 1, // You'll need to get the actual child ID
+        child_id: contactForm.childId || 1,
+        subject_id: contactForm.subjectId || 1,
         date: contactForm.preferredDate,
         time: contactForm.preferredTime,
         status: 'pending',
-        location: 'Online', // Default or from form
+        location: 'Online',
         notes: contactForm.message,
-        // These might be needed based on your session table structure
-        tutor: tutorName,
-        parent: '', // You might want to add parent name
-        student: contactForm.childName
+        hourly_rate: contactModal.tutor?.hourlyRate ? `${contactModal.tutor.hourlyRate}` : '0',
+        duration: '1 hour'
       };
 
       const response = await apiCall({
@@ -125,12 +162,11 @@ const TutorsDirectory = () => {
       });
 
       if (response.data.success) {
+        const tutorName = contactModal.tutor?.tutor_name || contactModal.tutor?.full_name;
         alert(`Session request sent to ${tutorName}! They will contact you soon.`);
         setContactModal({ isOpen: false, tutor: null });
         setContactForm({
-          childName: '',
           childId: '',
-          subject: '',
           subjectId: '',
           preferredDate: '',
           preferredTime: '',
@@ -142,6 +178,8 @@ const TutorsDirectory = () => {
     } catch (error) {
       console.error('Error creating session:', error);
       alert('Failed to send session request: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -366,7 +404,7 @@ const TutorsDirectory = () => {
               </div>
               <div>
                 <h4>{contactModal.tutor?.tutor_name || contactModal.tutor?.full_name}</h4>
-                <p>{(contactModal.tutor?.subjects || ['General Tutoring']).join(', ')} • 
+                <p>{(contactModal.tutor?.subjects || ['General Tutoring']).join(', ')} •
                   {contactModal.tutor?.hourlyRate ? `${contactModal.tutor.hourlyRate}Php/hr` : 'Rate not specified'}</p>
                 <div className="tutor-rating-small">
                   {renderStars(contactModal.tutor?.rating)}
@@ -378,29 +416,41 @@ const TutorsDirectory = () => {
             <form onSubmit={handleSubmitContact}>
               <div className="form-grid">
                 <div className="form-group">
-                  <label htmlFor="childName">Child's Name *</label>
-                  <input
-                    type="text"
-                    id="childName"
-                    value={contactForm.childName}
-                    onChange={(e) => setContactForm(prev => ({ ...prev, childName: e.target.value }))}
-                    required
-                  />
+                  <label htmlFor="childId">Select Child</label>
+                  <select
+                    id="childId"
+                    value={contactForm.childId}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, childId: e.target.value }))}
+                  >
+                    <option value="">Select a child</option>
+                    {children.map(child => (
+                      <option key={child.id} value={child.id}>
+                        {child.name} {child.grade ? `- Grade ${child.grade}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {children.length === 0 && (
+                    <p className="form-help">No children found. Please add a child to your profile first.</p>
+                  )}
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="subject">Subject *</label>
+                  <label htmlFor="subject">Subject</label>
                   <select
                     id="subject"
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm(prev => ({ ...prev, subject: e.target.value }))}
-                    required
+                    value={contactForm.subjectId}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, subjectId: e.target.value }))}
                   >
                     <option value="">Select a subject</option>
-                    {(contactModal.tutor?.subjects || ['General Tutoring']).map(subject => (
-                      <option key={subject} value={subject}>{subject}</option>
+                    {tutorSubjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.subject}
+                      </option>
                     ))}
                   </select>
+                  {tutorSubjects.length === 0 && (
+                    <p className="form-help">No subjects available for this tutor.</p>
+                  )}
                 </div>
 
                 <div className="form-group">
