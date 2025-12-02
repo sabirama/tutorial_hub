@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react';
 import "../../../../../assets/css/ParentTutors.css"
 import apiCall from '../../../../../middlewares/api/axios';
 import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
+import { useNavigate } from 'react-router-dom';
 
 const ParentTutors = () => {
+
+  const navigate = useNavigate();
+
+  if (!sessionStorage.getItem("token")) {
+    navigate('/');
+  }
+
   const [activeTab, setActiveTab] = useState('current');
   const [ratingModal, setRatingModal] = useState({ isOpen: false, tutor: null });
   const [sessionModal, setSessionModal] = useState({ isOpen: false, tutor: null });
@@ -377,7 +385,7 @@ const ParentTutors = () => {
                   Message
                 </button>
                 {tutor.status === 'active' && (
-                  <button 
+                  <button
                     className="schedule-btn"
                     onClick={() => handleScheduleSession(tutor)}
                   >

@@ -53,7 +53,7 @@ const Dashboard = () => {
                         <Link to={"/admin/tutors"}>Tutors</Link>
                     </li>
                     <li>
-                        <Link to={"/admin/Logout"} onClick={logout}>Logout</Link>
+                        <Link to={"/Logout"} onClick={logout}>Logout</Link>
                     </li>
                 </ul>
             </aside>

@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import "../../../../../assets/css/TutorsDirectory.css"
 import apiCall from '../../../../../middlewares/api/axios';
 import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
+import { useNavigate } from 'react-router-dom';
 
 const TutorsDirectory = () => {
+      const navigate = useNavigate();
+
+    if(!sessionStorage.getItem("token")) {
+       navigate('/');
+    }
+    
+
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState([]);

@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import Sessions from "./modules/Sessions";
 import ParentProfile from "./modules/Profile";
 import ParentTutors from "./modules/ParentTutors";
@@ -35,6 +35,14 @@ const Dashboard = () => {
     const toggleDashboard = () => {
         setIsActive(!isActive);
     }
+
+    const navigate = useNavigate();
+
+    if (!sessionStorage.getItem("token")) {
+        navigate('/');
+    }
+
+
     return (
         <>
             <aside id="sidebar" className={isActive ? "active" : "inactive"}>
@@ -53,7 +61,7 @@ const Dashboard = () => {
                         <Link to={"/parent/explore_tutors"}>All Tutors</Link>
                     </li>
                     <li>
-                        <Link to={"/parent/Logout"}>Logout</Link>
+                        <Link to={"/Logout"}>Logout</Link>
                     </li>
                 </ul>
             </aside>

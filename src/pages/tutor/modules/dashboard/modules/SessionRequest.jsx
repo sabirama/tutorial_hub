@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import "../../../../../assets/css/SessionRequest.css";
 import apiCall from '../../../../../middlewares/api/axios';
 import { getUserId, getToken } from '../../../../../middlewares/auth/auth';
-
+import { useNavigate } from 'react-router-dom';
 const SessionRequest = () => {
+      const navigate = useNavigate();
+
+    if(!sessionStorage.getItem("token")) {
+       navigate('/');
+    }
+    
   const [sessionRequests, setSessionRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());

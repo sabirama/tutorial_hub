@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react';
 import "../../../../../assets/css/TutorParents.css"
 import { getToken, getUserId } from '../../../../../middlewares/auth/auth';
 import apiCall from '../../../../../middlewares/api/axios';
+import { useNavigate } from 'react-router-dom';
 
 const TutorParents = () => {
+      const navigate = useNavigate();
+
+    if(!sessionStorage.getItem("token")) {
+       navigate('/');
+    }
+    
+
   const [activeTab, setActiveTab] = useState('current');
   const [ratingModal, setRatingModal] = useState({ isOpen: false, parent: null });
   const [sessionModal, setSessionModal] = useState({ isOpen: false, parent: null });

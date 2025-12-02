@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import "../../../../../assets/css/Sessions.css"
 import apiCall from '../../../../../middlewares/api/axios';
 import { getUserId } from '../../../../../middlewares/auth/auth';
+import { useNavigate } from 'react-router-dom';
 
 const Sessions = () => {
+
+      const navigate = useNavigate();
+
+    if(!sessionStorage.getItem("token")) {
+       navigate('/');
+    }
+    
+
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');

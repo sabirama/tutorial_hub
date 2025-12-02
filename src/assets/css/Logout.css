@@ -1,0 +1,158 @@
+/* Logout Container */
+.logout-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* Logout Card */
+.logout-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    text-align: center;
+    max-width: 450px;
+    width: 100%;
+    animation: slideUp 0.6s ease-out;
+}
+
+/* Logout Icon */
+.logout-icon {
+    margin-bottom: 24px;
+    animation: bounce 1s infinite alternate;
+}
+
+.logout-icon svg {
+    display: inline-block;
+}
+
+/* Logout Title */
+.logout-title {
+    color: #2d3748;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #3760e6 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Logout Message */
+.logout-message {
+    color: #718096;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+/* Progress Bar */
+.logout-progress {
+    margin: 30px 0;
+}
+
+.progress-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3760e6 0%, #764ba2 100%);
+    border-radius: 3px;
+    width: 0%;
+    animation: progressFill 3s linear forwards;
+}
+
+/* Login Link */
+.logout-actions {
+    margin-top: 30px;
+}
+
+.login-link {
+    display: inline-block;
+    background: linear-gradient(135deg, #3760e6 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(55, 96, 230, 0.3);
+}
+
+.login-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(55, 96, 230, 0.4);
+}
+
+.login-link:active {
+    transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounce {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes progressFill {
+    0% {
+        width: 0%;
+    }
+    100% {
+        width: 100%;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .logout-card {
+        padding: 30px 20px;
+    }
+    
+    .logout-title {
+        font-size: 24px;
+    }
+    
+    .logout-message {
+        font-size: 14px;
+    }
+    
+    .login-link {
+        padding: 12px 24px;
+        font-size: 14px;
+    }
+}

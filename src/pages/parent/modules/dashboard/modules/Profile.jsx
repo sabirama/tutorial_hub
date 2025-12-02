@@ -2,8 +2,17 @@ import { useState, useEffect } from 'react';
 import "../../../../../assets/css/ParentsProfile.css"
 import apiCall from '../../../../../middlewares/api/axios';
 import { getUserId, getToken } from '../../../../../middlewares/auth/auth';
+import { useNavigate } from 'react-router-dom';
 
 const ParentProfile = () => {
+
+  const navigate = useNavigate();
+
+  if (!sessionStorage.getItem("token")) {
+    navigate('/');
+  }
+
+
   const [parent, setParent] = useState({
     id: 1,
     full_name: "",
@@ -17,7 +26,7 @@ const ParentProfile = () => {
     created_at: "",
     updated_at: ""
   });
-  
+
   const [children, setChildren] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ ...parent });
@@ -35,12 +44,12 @@ const ParentProfile = () => {
         method: 'get',
         url: `/parents/${getUserId()}/profile`,
       });
-      
+
       console.log('API Response:', response.data);
-      
+
       if (response.data.success) {
         const profileData = response.data.data;
-        
+
         // Set parent data with proper structure
         const parentData = {
           id: profileData.id || getUserId(),
@@ -55,7 +64,7 @@ const ParentProfile = () => {
           created_at: profileData.created_at || "",
           updated_at: profileData.updated_at || ""
         };
-        
+
         setParent(parentData);
         setEditForm(parentData);
         setChildren(profileData.children || []);
@@ -91,22 +100,22 @@ const ParentProfile = () => {
     try {
       // Create object URL for immediate preview (client-side only)
       const objectUrl = URL.createObjectURL(file);
-      
+
       // Update both parent and editForm states with the object URL
-      setParent(prev => ({ 
-        ...prev, 
-        profile_image: objectUrl 
+      setParent(prev => ({
+        ...prev,
+        profile_image: objectUrl
       }));
-      setEditForm(prev => ({ 
-        ...prev, 
-        profile_image: objectUrl 
+      setEditForm(prev => ({
+        ...prev,
+        profile_image: objectUrl
       }));
-      
+
       console.log('Image preview updated with object URL');
-      
+
       // Show success message
       alert('Profile image updated successfully! This is a preview. The image will be saved when you save your profile.');
-      
+
     } catch (error) {
       console.error('Error processing image:', error);
       alert('Failed to process image. Please try again.');
@@ -130,7 +139,7 @@ const ParentProfile = () => {
     // Update both parent and editForm states
     setParent(prev => ({ ...prev, profile_image: '' }));
     setEditForm(prev => ({ ...prev, profile_image: '' }));
-    
+
     alert('Profile image removed successfully!');
   };
 
@@ -170,13 +179,13 @@ const ParentProfile = () => {
           'token': getToken()
         }
       });
-      
+
       if (response.data.success) {
         setParent(editForm);
-        
+
         // Now update children if they were modified
         await updateChildren();
-        
+
         setIsEditing(false);
         alert('Profile updated successfully!');
       } else {
@@ -193,17 +202,17 @@ const ParentProfile = () => {
       const parentId = getUserId();
       const currentChildrenIds = children.map(child => child.id).filter(Boolean);
       const editedChildrenIds = editChildren.map(child => child.id).filter(Boolean);
-      
+
       // Find new children (no id)
       const newChildren = editChildren.filter(child => !child.id);
-      
+
       // Find updated children (has id and exists in current)
-      const updatedChildren = editChildren.filter(child => 
+      const updatedChildren = editChildren.filter(child =>
         child.id && currentChildrenIds.includes(child.id)
       );
-      
+
       // Find deleted children (in current but not in edited)
-      const deletedChildrenIds = currentChildrenIds.filter(id => 
+      const deletedChildrenIds = currentChildrenIds.filter(id =>
         !editedChildrenIds.includes(id)
       );
 
@@ -249,7 +258,7 @@ const ParentProfile = () => {
         method: 'get',
         url: `/parents/${parentId}/children`,
       });
-      
+
       if (childrenResponse.data.success) {
         setChildren(childrenResponse.data.data);
         setEditChildren(childrenResponse.data.data);
@@ -263,11 +272,11 @@ const ParentProfile = () => {
 
   const handleCancel = () => {
     // Revoke any object URLs that were created during editing
-    if (editForm.profile_image && editForm.profile_image.startsWith('blob:') && 
-        editForm.profile_image !== parent.profile_image) {
+    if (editForm.profile_image && editForm.profile_image.startsWith('blob:') &&
+      editForm.profile_image !== parent.profile_image) {
       URL.revokeObjectURL(editForm.profile_image);
     }
-    
+
     setEditForm(parent);
     setEditChildren(children);
     setIsEditing(false);
@@ -306,7 +315,7 @@ const ParentProfile = () => {
     <div className="parent-profile">
       <div className="profile-header">
         <h1>Parent Profile</h1>
-        <button 
+        <button
           className="edit-profile-btn"
           onClick={() => setIsEditing(!isEditing)}
         >
@@ -322,8 +331,8 @@ const ParentProfile = () => {
               <div className="profile-image">
                 {parent.profile_image ? (
                   <div className="image-wrapper">
-                    <img 
-                      src={parent.profile_image} 
+                    <img
+                      src={parent.profile_image}
                       alt={parent.full_name}
                       key={parent.profile_image}
                       onLoad={() => console.log('Image loaded successfully')}
@@ -341,7 +350,7 @@ const ParentProfile = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Image Upload Controls */}
               <div className="image-upload-controls">
                 <label className="upload-btn">
@@ -354,9 +363,9 @@ const ParentProfile = () => {
                   />
                   {uploading ? 'Uploading...' : 'Change Photo'}
                 </label>
-                
+
                 {parent.profile_image && (
-                  <button 
+                  <button
                     className="remove-btn"
                     onClick={handleRemoveImage}
                     disabled={uploading}
@@ -366,7 +375,7 @@ const ParentProfile = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="profile-info">
               {isEditing ? (
                 <input
@@ -451,7 +460,7 @@ const ParentProfile = () => {
                       className="edit-input"
                       placeholder="Age"
                     />
-                    <button 
+                    <button
                       className="remove-child-btn"
                       onClick={() => removeChild(index)}
                     >
@@ -538,7 +547,7 @@ const ParentProfile = () => {
                 {parent.facebook && (
                   <div className="contact-item">
                     <span>🔗</span>
-                    <a 
+                    <a
                       href={`https://facebook.com/${parent.facebook}`}
                       target="_blank"
                       rel="noopener noreferrer"

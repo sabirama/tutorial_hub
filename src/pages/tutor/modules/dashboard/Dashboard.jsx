@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import Sessions from "./modules/Sessions";
 import TutorParents from "./modules/TutorParents";
 import { useState } from "react";
@@ -21,7 +21,7 @@ const DashboardRoutes = [
         path: "/tutee",
         element: TutorParents
     },
-     {
+    {
         name: "session request",
         path: "/session-request",
         element: SessionRequest
@@ -30,6 +30,12 @@ const DashboardRoutes = [
 ]
 
 const Dashboard = () => {
+    const navigate = useNavigate();
+
+    if (!sessionStorage.getItem("token")) {
+        navigate('/');
+    }
+
     const [isActive, setIsActive] = useState(true);
 
     const toggleDashboard = () => {
@@ -38,7 +44,7 @@ const Dashboard = () => {
 
     return (
         <>
-             <aside id="sidebar" className={isActive ? "active" : "inactive"}>
+            <aside id="sidebar" className={isActive ? "active" : "inactive"}>
                 <button className="mov" onClick={toggleDashboard}>☰</button>
                 <ul>
                     <li className="dashboard">
@@ -50,11 +56,11 @@ const Dashboard = () => {
                     <li>
                         <Link to={"/tutor/tutee"}>Tutored</Link>
                     </li>
-                     <li>
+                    <li>
                         <Link to={"/tutor/session-request"}>Session Request</Link>
                     </li>
                     <li>
-                        <Link to={"/tutor/Logout"}>Logout</Link>
+                        <Link to={"/Logout"}>Logout</Link>
                     </li>
                 </ul>
             </aside>

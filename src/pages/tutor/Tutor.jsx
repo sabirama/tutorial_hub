@@ -24,6 +24,7 @@ const pageRoutes = [
 
 
 const Tutor = () => {
+
     return (
         <div className="page">
             <Routes>
