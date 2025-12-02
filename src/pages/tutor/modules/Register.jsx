@@ -10,6 +10,7 @@ const Register = () => {
         contact_number: "",
         email: "",
         course: "",
+        course_other: "",
         location: "",
         facebook: "",
         username: "",
@@ -18,6 +19,55 @@ const Register = () => {
         hidePass: true,
         hideCPass: true
     });
+
+    const coursesList = [
+        "BS Computer Science",
+        "BS Information Technology",
+        "BS Computer Engineering",
+        "BS Electrical Engineering",
+        "BS Civil Engineering",
+        "BS Mechanical Engineering",
+        "BS Chemical Engineering",
+        "BS Electronics Engineering",
+        "BS Industrial Engineering",
+        "BS Architecture",
+        "BS Nursing",
+        "BS Medical Technology",
+        "BS Pharmacy",
+        "BS Physical Therapy",
+        "BS Biology",
+        "BS Chemistry",
+        "BS Physics",
+        "BS Mathematics",
+        "BS Statistics",
+        "BS Accountancy",
+        "BS Business Administration",
+        "BS Marketing",
+        "BS Finance",
+        "BS Economics",
+        "BS Entrepreneurship",
+        "BS Hospitality Management",
+        "BS Tourism Management",
+        "BS Psychology",
+        "BS Education",
+        "BS Elementary Education",
+        "BS Secondary Education",
+        "BS English",
+        "BS History",
+        "BS Political Science",
+        "BS Social Work",
+        "BS Communication",
+        "BS Journalism",
+        "BS Fine Arts",
+        "BS Music",
+        "BS Sports Science",
+        "BS Agriculture",
+        "BS Forestry",
+        "BS Environmental Science",
+        "BS Food Technology",
+        "BS Nutrition and Dietetics",
+        "Other"
+    ];
 
     const subjectsList = [
         "Mathematics",
@@ -43,13 +93,28 @@ const Register = () => {
     ];
 
     const navigate = useNavigate()
-    const { first_name, middle_name, last_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
-    const form = { full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`, contact_number, username, password, email, course, location, facebook, subjects_offered }
+    const { first_name, middle_name, last_name, contact_number, username, password, email, course, course_other, location, facebook, subjects_offered } = pageVars
+    const form = { 
+        full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`, 
+        contact_number, 
+        username, 
+        password, 
+        email, 
+        course: course === "Other" ? course_other : course, 
+        location, 
+        facebook, 
+        subjects_offered 
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
 
         try {
+            if (password !== e.target.form.confirm_password.value) {
+                alert("Passwords do not match.");
+                return;
+            }
+            
             const response = await apiCall({
                 method: 'post',
                 url: '/tutors/register',
@@ -67,8 +132,15 @@ const Register = () => {
             }
             console.log(response.data)
         } catch (e) {
-            console.log(e)
-            alert(e.message)
+            if (e.response && e.response.status === 400) {
+                if (e.response.data && e.response.data.error === 'Email or username already exists') {
+                    alert("Email or username already exists");
+                } else {
+                    alert("Username or email already taken");
+                }
+            } else {
+                alert(e?.data?.error || e.message);
+            }
         }
     }
 
@@ -134,7 +206,22 @@ const Register = () => {
 
                 <div>
                     <label>Course Graduated</label>
-                    <input type="text" name="course" onChange={(e) => handleVarChange("course", e)} />
+                    <select name="course" onChange={(e) => handleVarChange("course", e)} value={pageVars.course}>
+                        <option value="">Select Course</option>
+                        {coursesList.map((course, index) => (
+                            <option key={index} value={course}>{course}</option>
+                        ))}
+                    </select>
+                    {pageVars.course === "Other" && (
+                        <input 
+                            type="text" 
+                            name="course_other" 
+                            placeholder="Please specify your course" 
+                            onChange={(e) => handleVarChange("course_other", e)}
+                            value={pageVars.course_other}
+                            style={{marginTop: '10px'}}
+                        />
+                    )}
                 </div>
 
                 <div className="subjects-container">

@@ -21,6 +21,12 @@ const Register = () => {
 
     async function handleSubmit(e) {
         e.preventDefault();
+
+        if (password !== e.target.form.confirm_password.value) {
+            alert("Passwords do not match.");
+            return;
+        }
+        
         try {
             const response = await apiCall({
                 method: 'post',
@@ -38,7 +44,7 @@ const Register = () => {
                 navigate("/parent");
             }
         } catch (e) {
-            alert(e.message);
+            alert(e.data.error);
         }
     }
 
@@ -50,7 +56,7 @@ const Register = () => {
         <div className="form-container">
             <form>
                 <h3>REGISTER</h3>
-               <div>
+                <div>
                     <label>Full Name</label>
                     <input type="text" name="first_name" placeholder="first name" onChange={(e) => handleVarChange("first_name", e)} />
                     <input type="text" name="middle_name" placeholder="middle name" onChange={(e) => handleVarChange("middle_name", e)} />
