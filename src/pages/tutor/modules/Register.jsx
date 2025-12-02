@@ -44,7 +44,7 @@ const Register = () => {
 
     const navigate = useNavigate()
     const { first_name, middle_name, last_name, contact_number, username, password, email, course, location, facebook, subjects_offered } = pageVars
-    const form = { full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`.trim(), contact_number, username, password, email, course, location, facebook, subjects_offered }
+    const form = { full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`, contact_number, username, password, email, course, location, facebook, subjects_offered }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -63,8 +63,9 @@ const Register = () => {
             })
             if (response.data.data) {
                 sessionStorage.setItem('token', response.data.data.token)
-                navigate("/tutor")
+                navigate("/tutor/login")
             }
+            console.log(response.data)
         } catch (e) {
             alert(e.message)
         }
@@ -125,7 +126,7 @@ const Register = () => {
                 <div>
                     <label>Confirm Password</label>
                     <span className="password-container">
-                        <input type={pageVars.hidePass ? "password" : "text"} name="confirm_password" />
+                        <input type={pageVars.hideCPass ? "password" : "text"} name="confirm_password" />
                         <i onClick={(e) => { setPageVars({ ...pageVars, hideCPass: !pageVars.hideCPass }, e) }}>{pageVars.hideCPass ? "🔒" : "🔓"}</i>
                     </span>
                 </div>

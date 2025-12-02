@@ -23,7 +23,7 @@ const getUserId = () => {
 
 const getToken = () => {
      const token = sessionStorage.getItem('token');
-    const userToken = token?.split('|')[1].trim();
+    const userToken = token?.split('|')[1];
     return userToken || null;
 }
 
