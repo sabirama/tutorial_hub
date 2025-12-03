@@ -11,7 +11,7 @@
     password: 'VARCHAR(255) NOT NULL',
     profile_image: 'VARCHAR(500)',
     bio: 'TEXT',
-    status: 'VARCHAR(50) DEFAULT "pending"',
+    status: "VARCHAR(50) DEFAULT 'pending'",
     verified: 'BOOLEAN DEFAULT FALSE',
     ...TIMESTAMP
   }
