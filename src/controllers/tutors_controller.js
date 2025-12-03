@@ -16,7 +16,7 @@ export class TutorsController {
                 order = 'DESC'
             } = req.query;
 
-            let whereClause = {};
+            let whereClause;
             let additionalSQL = '';
 
             // Search functionality
