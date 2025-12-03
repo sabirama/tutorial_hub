@@ -13,7 +13,7 @@
         password: 'VARCHAR(255) NOT NULL',
         rating: 'DECIMAL(3,2) DEFAULT 0.0',
         hourly_rate: 'DECIMAL(10,2) DEFAULT 0.0',
-        status: 'VARCHAR(50) DEFAULT "pending"',
+        status: "VARCHAR(50) DEFAULT 'pending'",
         verified: "BOOLEAN DEFAULT FALSE",
         ...TIMESTAMP
     }
