@@ -15,6 +15,7 @@
         hourly_rate: 'DECIMAL(10,2) DEFAULT 0.0',
         status: "VARCHAR(50) DEFAULT 'pending'",
         verified: "BOOLEAN DEFAULT FALSE",
+        profile_image: 'VARCHAR(500)',
         ...TIMESTAMP
     }
 

@@ -30,4 +30,7 @@ router.get('/by-subject/:subject_id', tutorsController.getTutorsBySubject);
 // Parents
 router.get('/:id/parents', requireToken, parentTutorsController.getParentsByTutor);
 
+router.post('/upload-profile-image', requireToken, tutorsController.uploadProfileImage);
+router.delete('/:id/profile-image', requireToken, tutorsController.deleteProfileImage);
+
 export default router;

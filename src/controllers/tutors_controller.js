@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { query } from '../database/connection.js';
 import AuthUtils from '../middleware/hashing.js';
 
@@ -168,8 +170,6 @@ export class TutorsController {
                 'profile_image',
                 'bio',
                 'hourly_rate',
-                'experience',
-                'education'
             ];
 
             const filteredUpdateData = {};
@@ -577,86 +577,86 @@ export class TutorsController {
     }
 
     // In tutors_controller.js - add this method
-async getTutorsBySubject(req, res) {
-    try {
-        const { subject_id } = req.params;
-        const { page = 1, limit = 50 } = req.query;
+    async getTutorsBySubject(req, res) {
+        try {
+            const { subject_id } = req.params;
+            const { page = 1, limit = 50 } = req.query;
 
-        // Verify subject exists
-        const subjectExists = await query({
-            action: 'read',
-            table: 'subject',
-            where: { id: subject_id }
-        });
-
-        if (subjectExists.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Subject not found'
+            // Verify subject exists
+            const subjectExists = await query({
+                action: 'read',
+                table: 'subject',
+                where: { id: subject_id }
             });
-        }
 
-        // Get tutor IDs who teach this subject
-        const tutorSubjects = await query({
-            action: 'read',
-            table: 'tutors_subjects',
-            where: { subject_id }
-        });
+            if (subjectExists.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Subject not found'
+                });
+            }
 
-        const tutorIds = tutorSubjects.map(ts => ts.tutor_id);
+            // Get tutor IDs who teach this subject
+            const tutorSubjects = await query({
+                action: 'read',
+                table: 'tutors_subjects',
+                where: { subject_id }
+            });
 
-        if (tutorIds.length === 0) {
-            return res.json({
+            const tutorIds = tutorSubjects.map(ts => ts.tutor_id);
+
+            if (tutorIds.length === 0) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    message: 'No tutors found for this subject'
+                });
+            }
+
+            // Pagination
+            const offset = (page - 1) * limit;
+            const tutorIdsString = tutorIds.join(',');
+
+            // Get tutors
+            const tutors = await query({
+                action: 'read',
+                table: 'tutors',
+                where: {
+                    '__RAW__': `id IN (${tutorIdsString}) AND status = 'active'`
+                },
+                other: `ORDER BY rating DESC LIMIT ${limit} OFFSET ${offset}`
+            });
+
+            // Get total count
+            const countResult = await query({
+                action: 'count',
+                table: 'tutors',
+                where: {
+                    '__RAW__': `id IN (${tutorIdsString}) AND status = 'active'`
+                }
+            });
+
+            res.json({
                 success: true,
-                data: [],
-                message: 'No tutors found for this subject'
+                data: tutors,
+                subject: subjectExists[0],
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: countResult[0].count,
+                    pages: Math.ceil(countResult[0].count / limit)
+                }
+            });
+
+        } catch (error) {
+            console.error('Get tutors by subject error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch tutors by subject',
+                message: error.message
             });
         }
-
-        // Pagination
-        const offset = (page - 1) * limit;
-        const tutorIdsString = tutorIds.join(',');
-
-        // Get tutors
-        const tutors = await query({
-            action: 'read',
-            table: 'tutors',
-            where: {
-                '__RAW__': `id IN (${tutorIdsString}) AND status = 'active'`
-            },
-            other: `ORDER BY rating DESC LIMIT ${limit} OFFSET ${offset}`
-        });
-
-        // Get total count
-        const countResult = await query({
-            action: 'count',
-            table: 'tutors',
-            where: {
-                '__RAW__': `id IN (${tutorIdsString}) AND status = 'active'`
-            }
-        });
-
-        res.json({
-            success: true,
-            data: tutors,
-            subject: subjectExists[0],
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: countResult[0].count,
-                pages: Math.ceil(countResult[0].count / limit)
-            }
-        });
-
-    } catch (error) {
-        console.error('Get tutors by subject error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch tutors by subject',
-            message: error.message
-        });
     }
-}
 
     // GET /api/tutors/stats/locations - Get unique locations
     async getUniqueLocations(req, res) {
@@ -817,7 +817,7 @@ async getTutorsBySubject(req, res) {
     async loginTutor(req, res) {
         try {
             const { username, password } = req.body;
-  
+
             if (!username || !password) {
                 return res.status(400).json({
                     success: false,
@@ -1124,8 +1124,6 @@ async getTutorsBySubject(req, res) {
                 'profile_image',
                 'bio',
                 'hourly_rate',
-                'experience',
-                'education',
                 'status',      // ADD THIS
                 'verified',    // ADD THIS
                 'rating'       // ADD THIS if needed
@@ -1205,6 +1203,244 @@ async getTutorsBySubject(req, res) {
             res.status(500).json({
                 success: false,
                 error: 'Failed to update tutor',
+                message: error.message
+            });
+        }
+    }
+
+    // In your tutors_controller.js, add these methods:
+
+    // POST /api/tutors/upload-profile-image - Upload profile image
+    async uploadProfileImage(req, res) {
+        try {
+            console.log('Upload tutor profile image request received');
+
+            if (!req.files || !req.files.profile_image) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No image file provided'
+                });
+            }
+
+            const image = req.files.profile_image;
+            const tutorId = req.body.tutor_id;
+
+            if (!tutorId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Tutor ID is required'
+                });
+            }
+
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(image.mimetype)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed'
+                });
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (image.size > maxSize) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'File size too large. Maximum size is 5MB'
+                });
+            }
+
+            // Get current tutor to check for existing image
+            const tutors = await query({
+                action: 'read',
+                table: 'tutors',
+                where: { id: tutorId }
+            });
+
+            if (tutors.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Tutor not found'
+                });
+            }
+
+            const tutor = tutors[0];
+
+            // Delete old image if exists
+            if (tutor.profile_image) {
+                try {
+                    let oldFileName;
+                    if (tutor.profile_image.includes('/')) {
+                        oldFileName = tutor.profile_image.split('/').pop();
+                    } else {
+                        oldFileName = tutor.profile_image;
+                    }
+
+                    // Use process.cwd() to get project root
+                    const oldFilePath = path.join(process.cwd(), 'uploads/profile-images/tutors', oldFileName);
+
+                    if (fs.existsSync(oldFilePath)) {
+                        fs.unlinkSync(oldFilePath);
+                        console.log('Deleted old image:', oldFilePath);
+                    }
+                } catch (fileError) {
+                    console.error('Error deleting old profile image:', fileError);
+                }
+            }
+
+            // Create uploads directory if it doesn't exist
+            const uploadDir = path.join(process.cwd(), 'uploads/profile-images/tutors');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+                console.log('Created upload directory:', uploadDir);
+            }
+
+            // Generate unique filename
+            const fileExt = path.extname(image.name);
+            const fileName = `tutor_${tutorId}_${Date.now()}${fileExt}`;
+            const filePath = path.join(uploadDir, fileName);
+
+            console.log('Saving file to:', filePath);
+
+            // Move the file using callback
+            image.mv(filePath, async (err) => {
+                if (err) {
+                    console.error('Error moving file:', err);
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Failed to save image file',
+                        message: err.message
+                    });
+                }
+
+                // Generate URL for the image
+                const imageUrl = `/uploads/profile-images/tutors/${fileName}`;
+
+                console.log('Updating database with image URL:', imageUrl);
+
+                // Update tutor record with image URL
+                try {
+                    await query({
+                        action: 'update',
+                        table: 'tutors',
+                        where: { id: tutorId },
+                        data: { profile_image: imageUrl }
+                    });
+
+                    // Fetch updated tutor
+                    const updatedTutor = await query({
+                        action: 'read',
+                        table: 'tutors',
+                        get: 'id, full_name, email, course, location, facebook, username, profile_image, bio, hourly_rate, rating, status, created_at',
+                        where: { id: tutorId }
+                    });
+
+                    console.log('Image upload successful');
+
+                    res.json({
+                        success: true,
+                        message: 'Profile image uploaded successfully',
+                        data: {
+                            tutor: updatedTutor[0],
+                            imageUrl: imageUrl
+                        }
+                    });
+                } catch (dbError) {
+                    console.error('Database error:', dbError);
+                    // Try to delete the uploaded file if database update fails
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                    res.status(500).json({
+                        success: false,
+                        error: 'Failed to update database',
+                        message: dbError.message
+                    });
+                }
+            });
+
+        } catch (error) {
+            console.error('Upload profile image error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to upload profile image',
+                message: error.message
+            });
+        }
+    }
+
+    // DELETE /api/tutors/:id/profile-image - Delete profile image
+    async deleteProfileImage(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Get current image path
+            const tutors = await query({
+                action: 'read',
+                table: 'tutors',
+                where: { id }
+            });
+
+            if (tutors.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Tutor not found'
+                });
+            }
+
+            const tutor = tutors[0];
+            const currentImage = tutor.profile_image;
+
+            // If there's an image, delete it from filesystem
+            if (currentImage) {
+                try {
+                    // Extract filename from URL
+                    let fileName;
+                    if (currentImage.includes('/')) {
+                        fileName = currentImage.split('/').pop();
+                    } else {
+                        fileName = currentImage;
+                    }
+
+                    // Use process.cwd() to get project root
+                    const filePath = path.join(process.cwd(), 'uploads/profile-images/tutors', fileName);
+
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                } catch (fileError) {
+                    console.error('Error deleting file:', fileError);
+                    // Continue with database update even if file deletion fails
+                }
+            }
+
+            // Update database to remove image reference
+            await query({
+                action: 'update',
+                table: 'tutors',
+                where: { id },
+                data: { profile_image: null }
+            });
+
+            // Fetch updated tutor
+            const updatedTutor = await query({
+                action: 'read',
+                table: 'tutors',
+                get: 'id, full_name, email, course, location, facebook, username, profile_image, bio, hourly_rate, rating, status, created_at',
+                where: { id }
+            });
+
+            res.json({
+                success: true,
+                message: 'Profile image deleted successfully',
+                data: updatedTutor[0]
+            });
+
+        } catch (error) {
+            console.error('Delete profile image error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete profile image',
                 message: error.message
             });
         }

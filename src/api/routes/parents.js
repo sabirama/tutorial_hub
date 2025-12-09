@@ -29,4 +29,8 @@ router.post('/:id/children', requireToken, parentsController.addChild);
 router.put('/:parent_id/children/:child_id', requireToken, parentsController.updateChild);
 router.delete('/:parent_id/children/:child_id', requireToken, parentsController.deleteChild);
 
+// Profile image routes
+router.post('/upload-profile-image', requireToken, parentsController.uploadProfileImage);
+router.delete('/:id/profile-image', requireToken, parentsController.deleteProfileImage);
+
 export default router;

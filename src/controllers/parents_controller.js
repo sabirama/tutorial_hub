@@ -1,5 +1,14 @@
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { query } from '../database/connection.js';
 import AuthUtils from '../middleware/hashing.js';
+
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export class ParentsController {
 
     // GET /api/parents - Get all parents (admin only)
@@ -293,7 +302,7 @@ export class ParentsController {
         }
     }
 
-    // PUT /api/parents/:id - Update parent profile
+        // PUT /api/parents/:id - Update parent profile
     async updateParent(req, res) {
         try {
             const { id } = req.params;
@@ -315,6 +324,11 @@ export class ParentsController {
 
             // Remove non-updatable fields
             const { id: _, password, created_at, ...allowedUpdates } = updateData;
+
+            // IMPORTANT: If profile_image is being set to empty string, set it to null
+            if (allowedUpdates.profile_image === '') {
+                allowedUpdates.profile_image = null;
+            }
 
             // Validate email if being updated
             if (allowedUpdates.email) {
@@ -786,6 +800,243 @@ export class ParentsController {
             });
         }
     }
+
+    // POST /api/parents/upload-profile-image - Upload profile image
+    async uploadProfileImage(req, res) {
+        try {
+            console.log('Upload profile image request received');
+            
+            if (!req.files || !req.files.profile_image) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No image file provided'
+                });
+            }
+            
+            const image = req.files.profile_image;
+            const parentId = req.body.parent_id;
+            console.log(image)
+            if (!parentId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Parent ID is required'
+                });
+            }
+
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(image.mimetype)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed'
+                });
+            }
+
+            // Validate file size (max 5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (image.size > maxSize) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'File size too large. Maximum size is 5MB'
+                });
+            }
+
+            // Get current parent to check for existing image
+            const parents = await query({
+                action: 'read',
+                table: 'parents',
+                where: { id: parentId }
+            });
+
+            if (parents.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Parent not found'
+                });
+            }
+
+            const parent = parents[0];
+
+            // Delete old image if exists
+            if (parent.profile_image) {
+                try {
+                    let oldFileName;
+                    if (parent.profile_image.includes('/')) {
+                        oldFileName = parent.profile_image.split('/').pop();
+                    } else {
+                        oldFileName = parent.profile_image;
+                    }
+                    
+                    // FIXED: Use process.cwd() to get project root
+                    const oldFilePath = path.join(process.cwd(), 'uploads/profile-images/parents', oldFileName);
+        
+                    if (fs.existsSync(oldFilePath)) {
+                        fs.unlinkSync(oldFilePath);
+                        console.log('Deleted old image:', oldFilePath);
+                    }
+                } catch (fileError) {
+                    console.error('Error deleting old profile image:', fileError);
+                }
+            }
+
+            // FIXED: Use process.cwd() to get project root
+            const uploadDir = path.join(process.cwd(), 'uploads/profile-images/parents');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+                console.log('Created upload directory:', uploadDir);
+            }
+
+            // Generate unique filename
+            const fileExt = path.extname(image.name);
+            const fileName = `parent_${parentId}_${Date.now()}${fileExt}`;
+            const filePath = path.join(uploadDir, fileName);
+
+            console.log('Saving file to:', filePath);
+
+            // Move the file using callback
+            image.mv(filePath, async (err) => {
+                if (err) {
+                    console.error('Error moving file:', err);
+                    return res.status(500).json({
+                        success: false,
+                        error: 'Failed to save image file',
+                        message: err.message
+                    });
+                }
+
+                // Generate URL for the image
+                const imageUrl = `/uploads/profile-images/parents/${fileName}`;
+
+                console.log('Updating database with image URL:', imageUrl);
+                
+                // Update parent record with image URL
+                try {
+                    await query({
+                        action: 'update',
+                        table: 'parents',
+                        where: { id: parentId },
+                        data: { profile_image: imageUrl }
+                    });
+
+                    // Fetch updated parent
+                    const updatedParent = await query({
+                        action: 'read',
+                        table: 'parents',
+                        get: 'id, full_name, email, contact_number, location, facebook, username, profile_image, bio, status, created_at',
+                        where: { id: parentId }
+                    });
+
+                    console.log('Image upload successful');
+
+                    res.json({
+                        success: true,
+                        message: 'Profile image uploaded successfully',
+                        data: {
+                            parent: updatedParent[0],
+                            imageUrl: imageUrl
+                        }
+                    });
+                } catch (dbError) {
+                    console.error('Database error:', dbError);
+                    // Try to delete the uploaded file if database update fails
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                    res.status(500).json({
+                        success: false,
+                        error: 'Failed to update database',
+                        message: dbError.message
+                    });
+                }
+            });
+
+        } catch (error) {
+            console.error('Upload profile image error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to upload profile image',
+                message: error.message
+            });
+        }
+    }
+
+    // DELETE /api/parents/:id/profile-image - Delete profile image
+    async deleteProfileImage(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Get current image path
+            const parents = await query({
+                action: 'read',
+                table: 'parents',
+                where: { id }
+            });
+
+            if (parents.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Parent not found'
+                });
+            }
+
+            const parent = parents[0];
+            const currentImage = parent.profile_image;
+
+            // If there's an image, delete it from filesystem
+            if (currentImage) {
+                try {
+                    // Extract filename from URL
+                    let fileName;
+                    if (currentImage.includes('/')) {
+                        fileName = currentImage.split('/').pop();
+                    } else {
+                        fileName = currentImage;
+                    }
+                    
+                    // FIXED: Use process.cwd() to get project root
+                    const filePath = path.join(process.cwd(), 'uploads/profile-images/parents', fileName);
+                    
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                } catch (fileError) {
+                    console.error('Error deleting file:', fileError);
+                    // Continue with database update even if file deletion fails
+                }
+            }
+
+            // Update database to remove image reference
+            await query({
+                action: 'update',
+                table: 'parents',
+                where: { id },
+                data: { profile_image: null }
+            });
+
+            // Fetch updated parent
+            const updatedParent = await query({
+                action: 'read',
+                table: 'parents',
+                get: 'id, full_name, email, contact_number, location, facebook, username, profile_image, bio, status, created_at',
+                where: { id }
+            });
+
+            res.json({
+                success: true,
+                message: 'Profile image deleted successfully',
+                data: updatedParent[0]
+            });
+
+        } catch (error) {
+            console.error('Delete profile image error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete profile image',
+                message: error.message
+            });
+        }
+    }
+
 }
 
 export const parentsController = new ParentsController();
