@@ -8,10 +8,6 @@ const Header = () => {
     return (
         <header>
             <Link to={"/"} className="logo">TUTORIAL HUB</Link>
-            <nav>
-                <Link to={"#"}>About</Link>
-                <Link to={"#"}>Contact</Link>
-            </nav>
         </header>
     )
 }

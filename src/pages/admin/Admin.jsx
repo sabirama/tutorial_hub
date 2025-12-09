@@ -17,6 +17,7 @@ const PageRoutes = [
 ]
 
 const Admin = () => {
+
     return (
         <div className="page">
             <Routes>

@@ -20,6 +20,20 @@ const Register = () => {
         hideCPass: true
     });
 
+    const [errors, setErrors] = useState({
+        contact_number: "",
+        password: "",
+        username: ""
+    });
+
+    const [passwordStrength, setPasswordStrength] = useState({
+        hasUpperCase: false,
+        hasLowerCase: false,
+        hasNumber: false,
+        hasSpecialChar: false,
+        isLengthValid: false
+    });
+
     const [subjectsList, setSubjectsList] = useState([]);
     const [loadingSubjects, setLoadingSubjects] = useState(true);
     const [subjectCategories, setSubjectCategories] = useState({});
@@ -75,15 +89,15 @@ const Register = () => {
 
     const navigate = useNavigate()
     const { first_name, middle_name, last_name, contact_number, username, password, email, course, course_other, location, facebook, subjects_offered } = pageVars
-    const form = { 
-        full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`.trim(), 
-        contact_number, 
-        username, 
-        password, 
-        email, 
-        course: course === "Other" ? course_other : course, 
-        location, 
-        facebook, 
+    const form = {
+        full_name: `${first_name || ""} ${middle_name || ""} ${last_name || ""}`.trim(),
+        contact_number,
+        username,
+        password,
+        email,
+        course: course === "Other" ? course_other : course,
+        location,
+        facebook,
         subjects_offered: subjects_offered.map(subject => typeof subject === 'object' ? subject.id : subject)
     }
 
@@ -91,6 +105,11 @@ const Register = () => {
     useEffect(() => {
         fetchSubjects();
     }, []);
+
+    // Validate password whenever it changes
+    useEffect(() => {
+        validatePassword(pageVars.password);
+    }, [pageVars.password]);
 
     const fetchSubjects = async () => {
         try {
@@ -105,7 +124,7 @@ const Register = () => {
             if (response.data.success) {
                 const subjects = response.data.data || [];
                 setSubjectsList(subjects);
-                
+
                 // Group subjects by category
                 const grouped = {};
                 subjects.forEach(subject => {
@@ -126,15 +145,157 @@ const Register = () => {
         }
     };
 
+    const validatePassword = (password) => {
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        const isLengthValid = password.length >= 8;
+
+        setPasswordStrength({
+            hasUpperCase,
+            hasLowerCase,
+            hasNumber,
+            hasSpecialChar,
+            isLengthValid
+        });
+
+        // Check if all requirements are met
+        if (password && (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar || !isLengthValid)) {
+            setErrors(prev => ({
+                ...prev,
+                password: "Password must contain at least 1 uppercase, 1 lowercase, 1 number, 1 special character, and be at least 8 characters long"
+            }));
+        } else {
+            setErrors(prev => ({
+                ...prev,
+                password: ""
+            }));
+        }
+    };
+
+    const handleContactNumberChange = (e) => {
+        let value = e.target.value;
+        
+        // Remove any non-digit characters
+        value = value.replace(/\D/g, '');
+        
+        // Limit to 11 digits
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+        
+        // Update the state
+        setPageVars({ ...pageVars, contact_number: value });
+        
+        // Validate on the fly (only if user has entered something)
+        if (value) {
+            if (value.length !== 11) {
+                setErrors(prev => ({
+                    ...prev,
+                    contact_number: "Contact number must be exactly 11 digits"
+                }));
+            } else {
+                setErrors(prev => ({
+                    ...prev,
+                    contact_number: ""
+                }));
+            }
+        } else {
+            setErrors(prev => ({
+                ...prev,
+                contact_number: ""
+            }));
+        }
+    };
+
+    const handleUsernameChange = (e) => {
+        let value = e.target.value;
+        
+        // Remove spaces from username
+        value = value.replace(/\s+/g, '');
+        
+        // Check if username contains spaces (multiple words)
+        const hasSpaces = /\s/.test(e.target.value);
+        
+        setPageVars({ ...pageVars, username: value });
+        
+        // Validate on the fly
+        if (hasSpaces) {
+            setErrors(prev => ({
+                ...prev,
+                username: "Username must be a single word (no spaces allowed)"
+            }));
+        } else if (value && !/^[a-zA-Z0-9_]+$/.test(value)) {
+            setErrors(prev => ({
+                ...prev,
+                username: "Username can only contain letters, numbers, and underscores"
+            }));
+        } else {
+            setErrors(prev => ({
+                ...prev,
+                username: ""
+            }));
+        }
+    };
+
+    const handlePasswordChange = (e) => {
+        const value = e.target.value;
+        setPageVars({ ...pageVars, password: value });
+    };
+
     async function handleSubmit(e) {
         e.preventDefault();
+
+        // Validate contact number before submission
+        if (pageVars.contact_number && !/^\d{11}$/.test(pageVars.contact_number)) {
+            setErrors(prev => ({
+                ...prev,
+                contact_number: "Contact number must be exactly 11 digits"
+            }));
+            alert("Please enter a valid 11-digit contact number");
+            return;
+        }
+
+        // Validate username before submission
+        if (/\s/.test(username)) {
+            setErrors(prev => ({
+                ...prev,
+                username: "Username must be a single word (no spaces allowed)"
+            }));
+            alert("Username cannot contain spaces");
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            setErrors(prev => ({
+                ...prev,
+                username: "Username can only contain letters, numbers, and underscores"
+            }));
+            alert("Username can only contain letters, numbers, and underscores");
+            return;
+        }
+
+        // Validate password requirements
+        const { hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar, isLengthValid } = passwordStrength;
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar || !isLengthValid) {
+            setErrors(prev => ({
+                ...prev,
+                password: "Password must contain at least 1 uppercase, 1 lowercase, 1 number, 1 special character, and be at least 8 characters long"
+            }));
+            alert("Please ensure your password meets all requirements");
+            return;
+        }
+
+        // Clear any previous errors
+        setErrors({ contact_number: "", password: "", username: "" });
 
         try {
             if (password !== e.target.form.confirm_password.value) {
                 alert("Passwords do not match.");
                 return;
             }
-            
+
             // Validate required fields
             if (!first_name || !last_name || !email || !username || !password) {
                 alert("Please fill in all required fields.");
@@ -142,7 +303,7 @@ const Register = () => {
             }
 
             console.log("Submitting data:", form);
-            
+
             const response = await apiCall({
                 method: 'post',
                 url: '/tutors/register',
@@ -182,23 +343,31 @@ const Register = () => {
     }
 
     function handleVarChange(key, e) {
-        setPageVars({ ...pageVars, [key]: e.target.value });
+        if (key === "password") {
+            handlePasswordChange(e);
+        } else if (key === "username") {
+            handleUsernameChange(e);
+        } else if (key === "contact_number") {
+            handleContactNumberChange(e);
+        } else {
+            setPageVars({ ...pageVars, [key]: e.target.value });
+        }
     }
 
     function handleSubjectChange(subject) {
         setPageVars(prev => {
             const currentSubjects = [...prev.subjects_offered];
             const subjectId = typeof subject === 'object' ? subject.id : subject;
-            
+
             // Check if subject is already selected
-            const isSelected = currentSubjects.some(s => 
+            const isSelected = currentSubjects.some(s =>
                 (typeof s === 'object' ? s.id : s) === subjectId
             );
-            
+
             if (isSelected) {
                 return {
                     ...prev,
-                    subjects_offered: currentSubjects.filter(s => 
+                    subjects_offered: currentSubjects.filter(s =>
                         (typeof s === 'object' ? s.id : s) !== subjectId
                     )
                 };
@@ -213,9 +382,13 @@ const Register = () => {
 
     const isSubjectSelected = (subject) => {
         const subjectId = typeof subject === 'object' ? subject.id : subject;
-        return pageVars.subjects_offered.some(s => 
+        return pageVars.subjects_offered.some(s =>
             (typeof s === 'object' ? s.id : s) === subjectId
         );
+    };
+
+    const getPasswordValidationClass = (condition) => {
+        return condition ? "valid" : "invalid";
     };
 
     if (loadingSubjects) {
@@ -232,43 +405,110 @@ const Register = () => {
         <div className="form-container">
             <form>
                 <h3>REGISTER AS TUTOR</h3>
-                
+
                 {/* Name Fields */}
                 <div>
-                    <label>Full Name *</label>
+                    <label>Full Name</label>
                     <input type="text" name="first_name" placeholder="First name" onChange={(e) => handleVarChange("first_name", e)} required />
                     <input type="text" name="middle_name" placeholder="Middle name" onChange={(e) => handleVarChange("middle_name", e)} />
                     <input type="text" name="last_name" placeholder="Last name" onChange={(e) => handleVarChange("last_name", e)} required />
                 </div>
 
                 <div>
-                    <label>Email *</label>
+                    <label>Email</label>
                     <input type="email" name="email" onChange={(e) => handleVarChange("email", e)} required />
                 </div>
 
                 <div>
                     <label>Contact Number</label>
-                    <input type="tel" name="contact_number" placeholder="+63" onChange={(e) => handleVarChange("contact_number", e)} />
+                     <p className="field-help-text">
+                        <small>Format: 09XXXXXXXXX (11 digits total)</small>
+                    </p>
+                    <input 
+                        type="tel" 
+                        name="contact_number" 
+                        placeholder="09XXXXXXXXX (11 digits)" 
+                        value={pageVars.contact_number}
+                        onChange={(e) => handleVarChange("contact_number", e)}
+                        pattern="\d{11}"
+                        maxLength="11"
+                        title="Please enter exactly 11 digits"
+                    />
+                    {errors.contact_number && (
+                        <p className="error-message">
+                            {errors.contact_number}
+                        </p>
+                    )}
                 </div>
-                
+
                 <div>
-                    <label>Username *</label>
-                    <input type="text" name="username" onChange={(e) => handleVarChange("username", e)} required />
+                    <label>Username</label>
+                     <p className="field-help-text">
+                        <small>Username must be a single word (no spaces allowed)</small>
+                    </p>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        value={pageVars.username}
+                        onChange={(e) => handleVarChange("username", e)}
+                        pattern="^\S+$"
+                        title="Username cannot contain spaces"
+                        required
+                    />
+                    {errors.username && (
+                        <p className="error-message">
+                            {errors.username}
+                        </p>
+                    )}
+                   
                 </div>
-                
-                {/* KEEP YOUR ORIGINAL PASSWORD TOGGLE ICONS */}
+
+                {/* Password Field with Validation */}
                 <div>
-                    <label>Password *</label>
+                    <label>Password</label>
                     <span className="password-container">
-                        <input type={pageVars.hidePass ? "password" : "text"} name="password" onChange={(e) => handleVarChange("password", e)} required />
+                        <input 
+                            type={pageVars.hidePass ? "password" : "text"} 
+                            name="password" 
+                            onChange={(e) => handleVarChange("password", e)} 
+                            required 
+                        />
                         <i onClick={() => setPageVars({ ...pageVars, hidePass: !pageVars.hidePass })}>
                             {pageVars.hidePass ? "🔒" : "🔓"}
                         </i>
                     </span>
+                    
+                    {/* Password Validation Checklist */}
+                    <div className="password-validation">
+                        <p><strong>Password must contain:</strong></p>
+                        <ul>
+                            <li className={getPasswordValidationClass(passwordStrength.hasUpperCase)}>
+                                {passwordStrength.hasUpperCase ? "✓" : "✗"} At least one uppercase letter (A-Z)
+                            </li>
+                            <li className={getPasswordValidationClass(passwordStrength.hasLowerCase)}>
+                                {passwordStrength.hasLowerCase ? "✓" : "✗"} At least one lowercase letter (a-z)
+                            </li>
+                            <li className={getPasswordValidationClass(passwordStrength.hasNumber)}>
+                                {passwordStrength.hasNumber ? "✓" : "✗"} At least one number (0-9)
+                            </li>
+                            <li className={getPasswordValidationClass(passwordStrength.hasSpecialChar)}>
+                                {passwordStrength.hasSpecialChar ? "✓" : "✗"} At least one special character (!@#$%^&* etc.)
+                            </li>
+                            <li className={getPasswordValidationClass(passwordStrength.isLengthValid)}>
+                                {passwordStrength.isLengthValid ? "✓" : "✗"} Minimum 8 characters long
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    {errors.password && (
+                        <p className="error-message">
+                            {errors.password}
+                        </p>
+                    )}
                 </div>
-                
+
                 <div>
-                    <label>Confirm Password *</label>
+                    <label>Confirm Password</label>
                     <span className="password-container">
                         <input type={pageVars.hideCPass ? "password" : "text"} name="confirm_password" required />
                         <i onClick={() => setPageVars({ ...pageVars, hideCPass: !pageVars.hideCPass })}>
@@ -286,13 +526,13 @@ const Register = () => {
                         ))}
                     </select>
                     {pageVars.course === "Other" && (
-                        <input 
-                            type="text" 
-                            name="course_other" 
-                            placeholder="Please specify your course" 
+                        <input
+                            type="text"
+                            name="course_other"
+                            placeholder="Please specify your course"
                             onChange={(e) => handleVarChange("course_other", e)}
                             value={pageVars.course_other}
-                            style={{marginTop: '10px'}}
+                            style={{ marginTop: '10px' }}
                         />
                     )}
                 </div>
@@ -301,7 +541,7 @@ const Register = () => {
                 <div className="subjects-container">
                     <label>Subjects Offered</label>
                     <p className="subjects-help-text">Select the subjects you can teach</p>
-                    
+
                     {Object.keys(subjectCategories).length > 0 ? (
                         Object.entries(subjectCategories).map(([category, subjects]) => (
                             <div key={category} className="subject-category">
@@ -329,7 +569,7 @@ const Register = () => {
                     ) : (
                         <p>No subjects available. Please contact administrator.</p>
                     )}
-                    
+
                     {pageVars.subjects_offered.length > 0 && (
                         <div className="selected-subjects">
                             <strong>Selected Subjects ({pageVars.subjects_offered.length}): </strong>
@@ -352,10 +592,47 @@ const Register = () => {
                     <label>Facebook Profile (Optional)</label>
                     <input type="url" name="facebook" placeholder="https://facebook.com/username" onChange={(e) => handleVarChange("facebook", e)} />
                 </div>
-                
+
                 <button type="button" onClick={handleSubmit} className="submit-btn">Register</button>
                 <p className="form-switch">Already have an Account? <Link to={"/tutor/login"}>Login</Link></p>
             </form>
+            
+            {/* Add some CSS for the validation indicators */}
+            <style jsx>{`
+                .password-validation {
+                    margin-top: 10px;
+                }
+                .password-validation ul {
+                    list-style: none;
+                    padding: 0;
+                    margin: 5px 0;
+                }
+                .password-validation li {
+                    font-size: 0.8rem;
+                    margin-bottom: 3px;
+                }
+                .password-validation li.valid {
+                    color: green;
+                }
+                .password-validation li.invalid {
+                    color: #666;
+                }
+                .error-message {
+                    color: red;
+                    font-size: 0.8rem;
+                    margin-top: 5px;
+                    margin-bottom: 0;
+                }
+                .field-help-text {
+                    font-size: 0.8rem;
+                    color: #666;
+                    margin-top: 5px;
+                    margin-bottom: 0;
+                }
+                input:invalid {
+                    border-color: #ff4444;
+                }
+            `}</style>
         </div>
     )
 }

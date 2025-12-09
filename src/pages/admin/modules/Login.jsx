@@ -16,7 +16,7 @@ const Login = () => {
             alert("Invalid credentials");
         } else {
             setAuth({ username: pageVars.username, user: "admin" }, true);
-            window.location.href = "/admin/dashboard";
+            window.location.href = "/admin";
         }
 
     }

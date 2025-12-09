@@ -1,9 +1,6 @@
-import { Routes, Route, Link } from "react-router-dom"
-import { logout } from "../../../../middlewares/auth/auth"
-import ParentsManager from "./modules/ParentsManager"
-import TutorsManager from "./modules/TutorsManager"
-import { useState } from "react"
-import Sessions from "./modules/Sessions"
+import { Routes, Route, Link, useNavigate } from "react-router-dom"
+import { getAuth, logout } from "../../../../middlewares/auth/auth"
+import { useEffect, useState } from "react"
 import AdminDashboard from './modules/AdminDashBoard';
 
 const DashboardRoutes = [
@@ -12,31 +9,22 @@ const DashboardRoutes = [
         path: "/",
         element: AdminDashboard
     },
-    {
-        name: "parents",
-        path: "/parents",
-        element: ParentsManager
-    },
-    {
-        name: "tutors",
-        path: "/tutors",
-        element: TutorsManager
-    },
-    {
-        name: "sessions",
-        path: "/sessions",
-        element: Sessions
-    },
-    
-
 ]
 
 const Dashboard = () => {
     const [isActive, setIsActive] = useState(true);
-    
+    const nav = useNavigate();
+
     const toggleDashboard = () => {
        setIsActive(!isActive);
     }   
+
+   useEffect(() => {
+        const auth = getAuth();
+        if (!auth || auth.user !== "admin") {
+            nav("/admin/login");
+        }   
+    }, []);
 
     return (
         <>  
@@ -45,12 +33,6 @@ const Dashboard = () => {
                 <ul>
                     <li className="dashboard">
                         <Link to={"/admin"}>Dashboard</Link>
-                    </li>
-                    <li>
-                        <Link to={"/admin/parents"}>Parents</Link>
-                    </li>
-                    <li>
-                        <Link to={"/admin/tutors"}>Tutors</Link>
                     </li>
                     <li>
                         <Link to={"/Logout"} onClick={logout}>Logout</Link>

@@ -5,13 +5,11 @@ import { getUserId, getToken } from '../../../../../middlewares/auth/auth';
 import { useNavigate } from 'react-router-dom';
 
 const ParentProfile = () => {
-
   const navigate = useNavigate();
 
   if (!sessionStorage.getItem("token")) {
     navigate('/');
   }
-
 
   const [parent, setParent] = useState({
     id: 1,
@@ -33,6 +31,8 @@ const ParentProfile = () => {
   const [editChildren, setEditChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [newImageFile, setNewImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null); // Separate preview URL
 
   useEffect(() => {
     fetchParentData();
@@ -43,6 +43,9 @@ const ParentProfile = () => {
       const response = await apiCall({
         method: 'get',
         url: `/parents/${getUserId()}/profile`,
+        headers: {
+          token: getToken()
+        }
       });
 
       console.log('API Response:', response.data);
@@ -50,7 +53,6 @@ const ParentProfile = () => {
       if (response.data.success) {
         const profileData = response.data.data;
 
-        // Set parent data with proper structure
         const parentData = {
           id: profileData.id || getUserId(),
           full_name: profileData.full_name || "",
@@ -95,35 +97,14 @@ const ParentProfile = () => {
       return;
     }
 
-    setUploading(true);
+    // Store the file for later upload
+    setNewImageFile(file);
 
-    try {
-      // Create object URL for immediate preview (client-side only)
-      const objectUrl = URL.createObjectURL(file);
+    // Create object URL for immediate preview
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
 
-      // Update both parent and editForm states with the object URL
-      setParent(prev => ({
-        ...prev,
-        profile_image: objectUrl
-      }));
-      setEditForm(prev => ({
-        ...prev,
-        profile_image: objectUrl
-      }));
-
-      console.log('Image preview updated with object URL');
-
-      // Show success message
-      alert('Profile image updated successfully! This is a preview. The image will be saved when you save your profile.');
-
-    } catch (error) {
-      console.error('Error processing image:', error);
-      alert('Failed to process image. Please try again.');
-    } finally {
-      setUploading(false);
-      // Reset the file input
-      event.target.value = '';
-    }
+    console.log('Image selected for upload:', file.name);
   };
 
   const handleRemoveImage = () => {
@@ -131,16 +112,42 @@ const ParentProfile = () => {
       return;
     }
 
-    // Revoke object URL to prevent memory leaks
-    if (parent.profile_image && parent.profile_image.startsWith('blob:')) {
-      URL.revokeObjectURL(parent.profile_image);
+    // Revoke preview URL if exists
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
 
-    // Update both parent and editForm states
-    setParent(prev => ({ ...prev, profile_image: '' }));
+    // Clear the stored file
+    setNewImageFile(null);
+
+    // Update editForm to mark for deletion
     setEditForm(prev => ({ ...prev, profile_image: '' }));
 
-    alert('Profile image removed successfully!');
+    alert('Profile image will be removed when you save changes');
+  };
+
+  const deleteProfileImage = async () => {
+    try {
+      const response = await apiCall({
+        method: 'delete',
+        url: `/parents/${getUserId()}/profile-image`,
+        headers: {
+          'token': getToken()
+        }
+      });
+
+      if (response.data.success) {
+        console.log('Profile image deleted successfully');
+        return true;
+      } else {
+        console.error('Failed to delete image:', response.data.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      return false;
+    }
   };
 
   const handleEditChange = (field, value) => {
@@ -156,6 +163,34 @@ const ParentProfile = () => {
   const handleSave = async () => {
     try {
       const parentId = getUserId();
+      setUploading(true);
+
+      console.log('Saving profile...');
+
+      // 1. Handle image upload/removal
+      let finalImageUrl = parent.profile_image; // Keep current by default
+
+      if (newImageFile) {
+        console.log('Uploading new image...');
+        const imageUrl = await uploadProfileImage();
+        if (!imageUrl) {
+          setUploading(false);
+          alert('Failed to upload profile image');
+          return;
+        }
+        finalImageUrl = imageUrl;
+      } else if (editForm.profile_image === '' && parent.profile_image) {
+        console.log('Deleting existing image...');
+        const success = await deleteProfileImage();
+        if (!success) {
+          setUploading(false);
+          alert('Failed to delete profile image');
+          return;
+        }
+        finalImageUrl = '';
+      }
+
+      // 2. Update parent text fields
       const updateData = {
         full_name: editForm.full_name,
         contact_number: editForm.contact_number,
@@ -165,11 +200,7 @@ const ParentProfile = () => {
         bio: editForm.bio
       };
 
-      // If there's a new image (object URL), we need to handle it differently
-      // For now, we'll just save the text data and note that image needs separate handling
-      if (editForm.profile_image && editForm.profile_image.startsWith('blob:')) {
-        alert('Note: Profile image changes are currently preview only. Image upload functionality will be added soon.');
-      }
+      console.log('Updating parent text data:', updateData);
 
       const response = await apiCall({
         method: 'put',
@@ -181,19 +212,80 @@ const ParentProfile = () => {
       });
 
       if (response.data.success) {
-        setParent(editForm);
+        console.log('Profile text data updated successfully');
 
-        // Now update children if they were modified
-        await updateChildren();
+        // 3. Update children if changed
+        if (JSON.stringify(children) !== JSON.stringify(editChildren)) {
+          await updateChildren();
+        }
+
+        // 4. Update parent state with the final image URL
+        const updatedParent = {
+          ...editForm,
+          profile_image: finalImageUrl
+        };
+        setParent(updatedParent);
+        setEditForm(updatedParent);
+
+        // 5. Clean up
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(null);
+        }
+        setNewImageFile(null);
 
         setIsEditing(false);
         alert('Profile updated successfully!');
+
+        // 6. Refresh to get latest data from server
+        await fetchParentData();
       } else {
         alert('Failed to update profile: ' + (response.data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile: ' + (error.response?.data?.error || error.message));
+      alert('Failed to update profile: ' + (error.message || 'Unknown error'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadProfileImage = async () => {
+    if (!newImageFile) {
+      return null;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('profile_image', newImageFile);
+      formData.append('parent_id', getUserId());
+
+      console.log('Uploading image file:', newImageFile.name);
+
+      const response = await apiCall({
+        method: 'post',
+        url: '/parents/upload-profile-image',
+        data: formData,
+        headers: {
+          'token': getToken()
+        }
+      });
+
+      console.log('Upload response:', response.data);
+
+      if (response.data.success) {
+        const imageUrl = response.data.data.imageUrl ||
+          (response.data.data.parent && response.data.data.parent.profile_image);
+
+        console.log('Image uploaded successfully. URL:', imageUrl);
+        return imageUrl;
+      } else {
+        console.error('Failed to upload image:', response.data.error);
+        throw new Error(response.data.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
     }
   };
 
@@ -203,15 +295,10 @@ const ParentProfile = () => {
       const currentChildrenIds = children.map(child => child.id).filter(Boolean);
       const editedChildrenIds = editChildren.map(child => child.id).filter(Boolean);
 
-      // Find new children (no id)
       const newChildren = editChildren.filter(child => !child.id);
-
-      // Find updated children (has id and exists in current)
       const updatedChildren = editChildren.filter(child =>
         child.id && currentChildrenIds.includes(child.id)
       );
-
-      // Find deleted children (in current but not in edited)
       const deletedChildrenIds = currentChildrenIds.filter(id =>
         !editedChildrenIds.includes(id)
       );
@@ -227,6 +314,9 @@ const ParentProfile = () => {
             name: child.name,
             grade: child.grade,
             age: child.age
+          },
+          headers: {
+            'token': getToken()
           }
         });
       }
@@ -240,6 +330,9 @@ const ParentProfile = () => {
             name: child.name,
             grade: child.grade,
             age: child.age
+          },
+          headers: {
+            'token': getToken()
           }
         });
       }
@@ -250,6 +343,9 @@ const ParentProfile = () => {
         await apiCall({
           method: 'delete',
           url: `/parents/${parentId}/children/${childId}`,
+          headers: {
+            'token': getToken()
+          }
         });
       }
 
@@ -257,6 +353,9 @@ const ParentProfile = () => {
       const childrenResponse = await apiCall({
         method: 'get',
         url: `/parents/${parentId}/children`,
+        headers: {
+          'token': getToken()
+        }
       });
 
       if (childrenResponse.data.success) {
@@ -271,14 +370,15 @@ const ParentProfile = () => {
   };
 
   const handleCancel = () => {
-    // Revoke any object URLs that were created during editing
-    if (editForm.profile_image && editForm.profile_image.startsWith('blob:') &&
-      editForm.profile_image !== parent.profile_image) {
-      URL.revokeObjectURL(editForm.profile_image);
+    // Revoke preview URL if it exists
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
 
     setEditForm(parent);
     setEditChildren(children);
+    setNewImageFile(null);
     setIsEditing(false);
   };
 
@@ -294,7 +394,33 @@ const ParentProfile = () => {
     setEditChildren(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Calculate stats from actual data
+  const getInitials = (name) => {
+    if (!name) return 'P';
+    return name.split(' ').map(n => n && n[0]).join('').toUpperCase();
+  };
+
+  // Get the image URL to display
+  const getDisplayImageUrl = () => {
+    if (isEditing) {
+      // In edit mode: show preview if available, otherwise show current image
+      if (previewUrl) {
+        return previewUrl;
+      }
+      if (editForm.profile_image && editForm.profile_image !== '') {
+        return import.meta.env.VITE_BASE_URL.replace('/api', "") + editForm.profile_image;
+      }
+      return null;
+    } else {
+      // In view mode: show parent's current image
+      if (parent.profile_image) {
+        return import.meta.env.VITE_BASE_URL.replace('/api', "") + parent.profile_image;
+      }
+      return null;
+    }
+  };
+
+  const displayImageUrl = getDisplayImageUrl();
+
   const stats = [
     { label: "Member Since", value: parent.created_at ? new Date(parent.created_at).getFullYear() : 'N/A', icon: "📅" },
     { label: "Children", value: children.length, icon: "👨‍👩‍👧‍👦" }
@@ -318,6 +444,7 @@ const ParentProfile = () => {
         <button
           className="edit-profile-btn"
           onClick={() => setIsEditing(!isEditing)}
+          disabled={uploading}
         >
           {isEditing ? "Cancel Editing" : "Edit Profile"}
         </button>
@@ -329,51 +456,58 @@ const ParentProfile = () => {
           <div className="profile-card">
             <div className="profile-image-container">
               <div className="profile-image">
-                {parent.profile_image ? (
+                {displayImageUrl ? (
                   <div className="image-wrapper">
                     <img
-                      src={parent.profile_image}
-                      alt={parent.full_name}
-                      key={parent.profile_image}
+                      src={displayImageUrl}
+                      alt={editForm.full_name || parent.full_name || 'Profile'}
                       onLoad={() => console.log('Image loaded successfully')}
                       onError={(e) => {
-                        console.error('Image failed to load:', parent.profile_image);
-                        // Fallback to avatar
+                        console.error('Image failed to load');
                         e.target.style.display = 'none';
+                        const nextSibling = e.target.nextElementSibling;
+                        if (nextSibling) {
+                          nextSibling.style.display = 'flex';
+                        }
                       }}
                     />
+                    <div className="avatar-fallback" style={{ display: 'none' }}>
+                      {getInitials(isEditing ? editForm.full_name : parent.full_name)}
+                    </div>
                     {uploading && <div className="upload-overlay">Uploading...</div>}
                   </div>
                 ) : (
                   <div className="avatar-large">
-                    {parent.full_name?.split(' ').map(n => n[0]).join('') || 'P'}
+                    {getInitials(isEditing ? editForm.full_name : parent.full_name)}
                   </div>
                 )}
               </div>
 
-              {/* Image Upload Controls */}
-              <div className="image-upload-controls">
-                <label className="upload-btn">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={uploading}
-                    style={{ display: 'none' }}
-                  />
-                  {uploading ? 'Uploading...' : 'Change Photo'}
-                </label>
+              {/* Image Upload Controls - Only show in edit mode */}
+              {isEditing && (
+                <div className="image-upload-controls">
+                  <label className="upload-btn">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                      style={{ display: 'none' }}
+                    />
+                    {uploading ? 'Uploading...' : 'Change Photo'}
+                  </label>
 
-                {parent.profile_image && (
-                  <button
-                    className="remove-btn"
-                    onClick={handleRemoveImage}
-                    disabled={uploading}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
+                  {(displayImageUrl || parent.profile_image) && (
+                    <button
+                      className="remove-btn"
+                      onClick={handleRemoveImage}
+                      disabled={uploading}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="profile-info">
@@ -384,6 +518,7 @@ const ParentProfile = () => {
                   onChange={(e) => handleEditChange('full_name', e.target.value)}
                   className="edit-input"
                   placeholder="Full Name"
+                  disabled={uploading}
                 />
               ) : (
                 <h2>{parent.full_name || "No Name Provided"}</h2>
@@ -404,7 +539,6 @@ const ParentProfile = () => {
               </div>
             ))}
           </div>
-
         </div>
 
         {/* Right Side - Detailed Info */}
@@ -419,6 +553,7 @@ const ParentProfile = () => {
                 className="edit-textarea"
                 rows="4"
                 placeholder="Tell us about yourself and your children..."
+                disabled={uploading}
               />
             ) : (
               <p>{parent.bio || "No bio provided yet."}</p>
@@ -430,7 +565,11 @@ const ParentProfile = () => {
             <div className="card-header">
               <h3>Children Information</h3>
               {isEditing && (
-                <button className="add-child-btn" onClick={addChild}>
+                <button
+                  className="add-child-btn"
+                  onClick={addChild}
+                  disabled={uploading}
+                >
                   + Add Child
                 </button>
               )}
@@ -445,6 +584,7 @@ const ParentProfile = () => {
                       onChange={(e) => handleChildChange(index, 'name', e.target.value)}
                       className="edit-input"
                       placeholder="Child's Name"
+                      disabled={uploading}
                     />
                     <input
                       type="text"
@@ -452,6 +592,7 @@ const ParentProfile = () => {
                       onChange={(e) => handleChildChange(index, 'grade', e.target.value)}
                       className="edit-input"
                       placeholder="Grade Level"
+                      disabled={uploading}
                     />
                     <input
                       type="text"
@@ -459,10 +600,12 @@ const ParentProfile = () => {
                       onChange={(e) => handleChildChange(index, 'age', e.target.value)}
                       className="edit-input"
                       placeholder="Age"
+                      disabled={uploading}
                     />
                     <button
                       className="remove-child-btn"
                       onClick={() => removeChild(index)}
+                      disabled={uploading}
                     >
                       🗑️
                     </button>
@@ -497,6 +640,7 @@ const ParentProfile = () => {
                     onChange={(e) => handleEditChange('email', e.target.value)}
                     className="edit-input"
                     placeholder="Email"
+                    disabled={uploading}
                   />
                 </div>
                 <div className="contact-item">
@@ -507,6 +651,7 @@ const ParentProfile = () => {
                     onChange={(e) => handleEditChange('contact_number', e.target.value)}
                     className="edit-input"
                     placeholder="Contact Number"
+                    disabled={uploading}
                   />
                 </div>
                 <div className="contact-item">
@@ -517,6 +662,7 @@ const ParentProfile = () => {
                     onChange={(e) => handleEditChange('location', e.target.value)}
                     className="edit-input"
                     placeholder="Location"
+                    disabled={uploading}
                   />
                 </div>
                 <div className="contact-item">
@@ -527,6 +673,7 @@ const ParentProfile = () => {
                     onChange={(e) => handleEditChange('facebook', e.target.value)}
                     className="edit-input"
                     placeholder="Facebook Link"
+                    disabled={uploading}
                   />
                 </div>
               </>
@@ -548,11 +695,13 @@ const ParentProfile = () => {
                   <div className="contact-item">
                     <span>🔗</span>
                     <a
-                      href={`https://facebook.com/${parent.facebook}`}
+                      href={parent.facebook.startsWith('http') ? parent.facebook : `https://facebook.com/${parent.facebook}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      @{parent.facebook}
+                      {parent.facebook.includes('facebook.com/') ?
+                        parent.facebook.split('facebook.com/')[1] :
+                        parent.facebook}
                     </a>
                   </div>
                 )}
@@ -563,10 +712,18 @@ const ParentProfile = () => {
           {/* Edit Actions */}
           {isEditing && (
             <div className="edit-actions">
-              <button className="save-btn" onClick={handleSave}>
-                Save Changes
+              <button
+                className="save-btn"
+                onClick={handleSave}
+                disabled={uploading}
+              >
+                {uploading ? 'Saving...' : 'Save Changes'}
               </button>
-              <button className="cancel-btn" onClick={handleCancel}>
+              <button
+                className="cancel-btn"
+                onClick={handleCancel}
+                disabled={uploading}
+              >
                 Cancel
               </button>
             </div>
